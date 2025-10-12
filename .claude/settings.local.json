@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill:*)",
+      "Bash(timeout:*)",
+      "Bash(cat:*)",
+      "Bash(curl:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npm install:*)",
+      "Bash(npx web-push:*)",
+      "Read(//c/Users/kochi202504/AppData/Roaming/Claude/**)",
+      "Bash(node -e \"console.log(require(''crypto'').randomBytes(32).toString(''hex''))\")",
+      "Bash(node -e \"console.log(''base64:'' + require(''crypto'').randomBytes(32).toString(''base64''))\")",
+      "Bash(npm run db:push:*)",
+      "Bash(echo $SUPABASE_SERVICE_ROLE_KEY)",
+      "Bash(REG delete:*)",
+      "Bash(unset:*)",
+      "Bash(REG query:*)",
+      "Bash(powershell:*)",
+      "Bash(node:*)",
+      "WebSearch",
+      "WebFetch(domain:supabase.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:awatere.substack.com)",
+      "Bash(claude mcp add:*)",
+      "Bash(claude mcp:*)",
+      "Bash(supabase:*)",
+      "Read(//c/Users/kochi202504/**)",
+      "Bash(cloudflared:*)",
+      "Bash(ngrok version)",
+      "Bash(\"C:\\Users\\kochi202504\\cloudflared.exe\" --version)",
+      "Bash(\"C:\\Users\\kochi202504\\cloudflared.exe\" tunnel --url http://localhost:3000)",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git reset:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
