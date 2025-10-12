@@ -35,7 +35,12 @@
       "Bash(\"C:\\Users\\kochi202504\\cloudflared.exe\" tunnel --url http://localhost:3000)",
       "Bash(git init:*)",
       "Bash(git add:*)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(git commit:*)",
+      "Bash(git remote add:*)",
+      "Bash(git branch:*)",
+      "Bash(git push:*)",
+      "Bash(vercel:*)"
     ],
     "deny": [],
     "ask": []

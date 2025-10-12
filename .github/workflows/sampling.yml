@@ -1,0 +1,14 @@
+name: Sampling Cron
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'  # 5分ごと
+  workflow_dispatch:  # 手動実行も可能
+
+jobs:
+  sample:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call sampling API
+        run: |
+          curl -X GET ${{ secrets.APP_URL }}/api/sampling
