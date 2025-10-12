@@ -731,10 +731,25 @@
 
 ### ⏰ 低優先度（将来的に）
 
-16. **予約投稿**
-17. **複数プラットフォーム** - YouTube Live
-18. **機械学習** - 最適投稿時刻予測
-19. **モバイルアプリ** - React Native
+16. **ゲーム変更検出機能** - 配信中のカテゴリ変更を通知
+    - 📋 EventSub `stream.update` 購読追加
+    - 📋 ゲーム変更検出ロジック実装
+    - 📋 `game_change_events` テーブル作成
+    - 📋 `drafts` テーブル拡張（draft_type, previous_category, new_category）
+    - 📋 `user_settings` 拡張（notify_game_change, game_change_cooldown）
+    - 📋 テンプレート変数追加（{previous_category}, {new_category}）
+    - 📋 Web Push通知実装（ゲーム変更専用）
+    - 📋 クールダウン機能（10分デフォルト）
+    - 📋 ホワイトリスト機能（特定ゲームのみ通知）
+    - 📋 設定UI実装（/settings）
+    - 📋 ゲーム変更履歴表示（/streams）
+    - 📋 ゲーム別パフォーマンス分析（/reports）
+    - ドキュメント: `docs/features/game-change-detection.md`
+
+17. **予約投稿**
+18. **複数プラットフォーム** - YouTube Live
+19. **機械学習** - 最適投稿時刻予測
+20. **モバイルアプリ** - React Native
 
 ---
 
