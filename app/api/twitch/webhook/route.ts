@@ -130,6 +130,17 @@ export async function POST(req: NextRequest) {
           // Don't fail the webhook if push fails
         }
 
+        // Take initial baseline sample for lift calculation
+        // This ensures we have "before post" data even if user posts immediately
+        const { sampleViewerCount } = await import("@/lib/sampling");
+        try {
+          await sampleViewerCount(stream.id);
+          console.log(`[webhook] Initial baseline sample taken for stream ${stream.id}`);
+        } catch (samplingError) {
+          console.error("[webhook] Failed to take initial sample:", samplingError);
+          // Don't fail the webhook if sampling fails
+        }
+
         return new NextResponse(null, { status: 204 });
       } else if (eventType === "stream.update") {
         // Handle stream.update for game change detection
