@@ -46,6 +46,7 @@ nul
 
 # Documentation (deployment不要)
 docs/
+CLAUDE.md
 
 # Claude Code settings (個人設定)
 .claude/
