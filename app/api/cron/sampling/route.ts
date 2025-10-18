@@ -33,11 +33,11 @@ export async function GET(req: NextRequest) {
 
     console.log("[cron] Starting viewer sampling job");
 
-    // Get all active streams (status = 'live')
+    // Get all active streams (ended_at_est IS NULL means still live)
     const { data: activeStreams, error: streamsError } = await supabaseAdmin
       .from("streams")
-      .select("id, user_id, broadcaster_id, started_at")
-      .eq("status", "live");
+      .select("id, user_id, stream_id, started_at")
+      .is("ended_at_est", null);
 
     if (streamsError) {
       console.error("[cron] Failed to fetch active streams:", streamsError);
@@ -61,17 +61,22 @@ export async function GET(req: NextRequest) {
         try {
           const result = await sampleViewerCount(stream.id);
 
-          if (result.status === "ended") {
-            console.log(`[cron] Stream ${stream.id} has ended`);
-          } else if (result.status === "sampled") {
-            console.log(
-              `[cron] Sampled stream ${stream.id}: ${result.viewerCount} viewers`
-            );
+          if (!result) {
+            console.log(`[cron] Stream ${stream.id} has ended or failed to sample`);
+            return {
+              stream_id: stream.id,
+              status: "ended",
+              viewer_count: null,
+            };
           }
+
+          console.log(
+            `[cron] Sampled stream ${stream.id}: ${result.viewerCount} viewers`
+          );
 
           return {
             stream_id: stream.id,
-            status: result.status,
+            status: "sampled",
             viewer_count: result.viewerCount,
           };
         } catch (error) {

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Noto_Sans_JP, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { Providers } from "@/components/providers";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -24,7 +25,10 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CastCue - Your live, on cue.",
+  title: {
+    template: "%s | CastCue",
+    default: "CastCue - Your live, on cue.",
+  },
   description: "Twitch配信の開始検知→自動告知（X/Discord）→リフト可視化",
 };
 
@@ -36,7 +40,7 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <body className={`${plusJakartaSans.variable} ${notoSansJP.variable} ${jetbrainsMono.variable} antialiased font-sans`}>
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

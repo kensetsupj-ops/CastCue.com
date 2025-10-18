@@ -8,12 +8,12 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground shadow-sm hover:bg-primary-hover active:scale-[0.98]",
-        secondary: "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/90 active:scale-[0.98]",
-        danger: "bg-danger text-white shadow-sm hover:bg-danger/90 active:scale-[0.98]",
-        outline: "border border-neutral-border bg-neutral-surface hover:bg-neutral-bg active:bg-neutral-border text-neutral-ink",
-        ghost: "hover:bg-neutral-bg active:bg-neutral-border text-neutral-ink",
-        link: "text-primary underline-offset-4 hover:underline",
+        default: "bg-primary text-primary-foreground shadow-sm hover:bg-primary-hover active:scale-[0.98] dark:bg-primary dark:hover:bg-primary-hover",
+        secondary: "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/90 active:scale-[0.98] dark:bg-secondary dark:hover:bg-secondary/90",
+        danger: "bg-danger text-white shadow-sm hover:bg-danger/90 active:scale-[0.98] dark:bg-danger dark:hover:bg-danger/90",
+        outline: "border border-neutral-border bg-neutral-surface hover:bg-neutral-bg active:bg-neutral-border text-neutral-ink dark:border-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100",
+        ghost: "hover:bg-neutral-bg active:bg-neutral-border text-neutral-ink dark:hover:bg-gray-700 dark:active:bg-gray-600 dark:text-gray-100",
+        link: "text-primary underline-offset-4 hover:underline dark:text-primary",
       },
       size: {
         default: "h-10 px-4 py-2",

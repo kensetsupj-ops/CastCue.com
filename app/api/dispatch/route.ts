@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { createServerClient } from "@supabase/ssr";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/db";
 import { getUserAccessToken, postTweet } from "@/lib/x";
@@ -6,9 +8,10 @@ import { sendStreamNotification } from "@/lib/discord";
 import { consumeQuota, getQuota, shouldFallbackToDiscord } from "@/lib/quota";
 import { generateShortCode } from "@/lib/utils";
 import { hash } from "@/lib/crypto";
+import { validateCSRF } from "@/lib/csrf";
+import { checkRateLimit } from "@/lib/ratelimit";
 
 const DispatchRequestSchema = z.object({
-  user_id: z.string().uuid(),
   stream_id: z.number(),
   title: z.string(),
   twitch_url: z.string().url(),
@@ -17,11 +20,81 @@ const DispatchRequestSchema = z.object({
 /**
  * Dispatch notification to X and/or Discord
  * POST /api/dispatch
+ *
+ * SECURITY: Requires authentication. Uses authenticated user's ID only.
+ * CSRF protection enabled.
  */
 export async function POST(req: NextRequest) {
   try {
+    // CSRF protection
+    const csrfError = validateCSRF(req);
+    if (csrfError) {
+      return csrfError;
+    }
+
+    // Authenticate user
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          },
+        },
+      }
+    );
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
+    // Use authenticated user's ID only
+    const user_id = user.id;
+
+    // Rate limiting (after authentication to use user ID)
+    const rateLimitError = checkRateLimit(req, user_id);
+    if (rateLimitError) {
+      return rateLimitError;
+    }
+
     const body = await req.json();
-    const { user_id, stream_id, title, twitch_url } = DispatchRequestSchema.parse(body);
+    const { stream_id, title, twitch_url } = DispatchRequestSchema.parse(body);
+
+    // Verify stream ownership (optional but recommended)
+    const { data: stream, error: streamError } = await supabaseAdmin
+      .from("streams")
+      .select("user_id")
+      .eq("id", stream_id)
+      .single();
+
+    if (streamError || !stream) {
+      return NextResponse.json(
+        { error: "Stream not found" },
+        { status: 404 }
+      );
+    }
+
+    if (stream.user_id !== user_id) {
+      return NextResponse.json(
+        { error: "Unauthorized: Stream does not belong to user" },
+        { status: 403 }
+      );
+    }
 
     const startTime = Date.now();
 
@@ -31,19 +104,50 @@ export async function POST(req: NextRequest) {
     // Determine if we should fallback to Discord only
     const useFallback = shouldFallbackToDiscord(quota);
 
-    // Generate short URL
-    const shortCode = generateShortCode();
-    const { data: link } = await supabaseAdmin
-      .from("links")
-      .insert({
-        user_id,
-        short_code: shortCode,
-        target_url: twitch_url,
-      })
-      .select("*")
-      .single();
+    // SECURITY: Generate short URL with collision check
+    const maxAttempts = 10;
+    let shortCode: string;
+    let link: any;
 
-    const shortUrl = `${process.env.APP_ORIGIN}/l/${shortCode}`;
+    for (let attempts = 0; attempts < maxAttempts; attempts++) {
+      shortCode = generateShortCode();
+
+      // Check if short code already exists
+      const { data: existing } = await supabaseAdmin
+        .from("links")
+        .select("id")
+        .eq("short_code", shortCode)
+        .single();
+
+      if (!existing) {
+        // Short code is available, insert it
+        const { data: insertedLink, error: insertError } = await supabaseAdmin
+          .from("links")
+          .insert({
+            user_id,
+            short_code: shortCode,
+            target_url: twitch_url,
+          })
+          .select("*")
+          .single();
+
+        if (insertError) {
+          // Race condition: another request inserted the same code
+          // Try again with a new code
+          continue;
+        }
+
+        link = insertedLink;
+        break;
+      }
+
+      // Collision detected, loop will try again
+      if (attempts === maxAttempts - 1) {
+        throw new Error("Failed to generate unique short code after maximum attempts");
+      }
+    }
+
+    const shortUrl = `${process.env.APP_ORIGIN}/l/${shortCode!}`;
 
     // Get template
     const { data: template } = await supabaseAdmin
@@ -91,7 +195,7 @@ export async function POST(req: NextRequest) {
             stream_id,
             channel: "x",
             status: "sent",
-            idempotency_key,
+            idempotency_key: idempotencyKey,
             post_id: tweet.id,
             latency_ms: Date.now() - startTime,
           });

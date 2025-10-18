@@ -12,7 +12,7 @@ export async function GET(request: Request) {
 
     if (!error && data.user) {
       // プロフィール同期を実行
-      await syncTwitchProfile(data.user.id, data.session?.provider_token)
+      await syncTwitchProfile(data.user.id, data.session?.provider_token ?? undefined)
 
       const forwardedHost = request.headers.get('x-forwarded-host')
       const isLocalEnv = process.env.NODE_ENV === 'development'

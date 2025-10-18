@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { randomBytes } from "crypto";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -7,12 +8,27 @@ export function cn(...inputs: ClassValue[]) {
 
 /**
  * Generate a random short code for URL shortening
+ * SECURITY: Uses cryptographically secure random bytes instead of Math.random()
+ * Default length increased from 6 to 8 characters for enhanced security
+ * - 6 chars: 62^6  ≈ 56.8 billion combinations
+ * - 8 chars: 62^8  ≈ 218 trillion combinations
  */
-export function generateShortCode(length: number = 6): string {
+export function generateShortCode(length: number = 8): string {
   const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  const bytes = randomBytes(length);
   let result = "";
   for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+    // Use modulo bias mitigation by rejecting values >= 256 - (256 % chars.length)
+    // For chars.length=62, this rejects values >= 254
+    const maxValidValue = 256 - (256 % chars.length);
+    let byte = bytes[i];
+
+    // Regenerate byte if it's in the biased range
+    while (byte >= maxValidValue) {
+      byte = randomBytes(1)[0];
+    }
+
+    result += chars.charAt(byte % chars.length);
   }
   return result;
 }

@@ -1,18 +1,5 @@
 import { supabaseAdmin } from "./db";
-import { randomBytes } from "crypto";
-
-/**
- * Generate a unique short code for URL shortening
- */
-function generateShortCode(length: number = 6): string {
-  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  const bytes = randomBytes(length);
-  let result = "";
-  for (let i = 0; i < length; i++) {
-    result += chars[bytes[i] % chars.length];
-  }
-  return result;
-}
+import { generateShortCode } from "./utils";
 
 /**
  * Create a short link

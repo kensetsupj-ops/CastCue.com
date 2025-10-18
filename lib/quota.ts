@@ -54,7 +54,7 @@ export async function getQuota(userId: string): Promise<QuotaInfo> {
     global_used: data.global_monthly_used,
     global_limit: GLOBAL_CAP,
     reset_on: data.reset_on,
-    can_post,
+    can_post: canPost,
     warning_level: warningLevel,
   };
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/db";
+import { createClient } from "@/lib/supabase/server";
 import { getUserAccessToken, postTweet } from "@/lib/x";
 import { replaceWithShortLink } from "@/lib/link";
 import { startSampling } from "@/lib/sampling";
@@ -20,12 +21,23 @@ const ManualPostRequestSchema = z.object({
  */
 export async function POST(
   req: NextRequest,
-  { params }: { params: { draftId: string } }
+  { params }: { params: Promise<{ draftId: string }> }
 ) {
   try {
-    const { draftId } = params;
+    const { draftId } = await params;
     const body = await req.json();
     const { body: bodyText, media_ids, template_id } = ManualPostRequestSchema.parse(body);
+
+    // 認証チェック
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
 
     // Get draft
     const { data: draft, error: draftError } = await supabaseAdmin
@@ -40,6 +52,37 @@ export async function POST(
         { error: "Draft not found or already processed" },
         { status: 404 }
       );
+    }
+
+    // 所有権チェック
+    if (draft.user_id !== user.id) {
+      return NextResponse.json(
+        { error: "Forbidden: Draft does not belong to user" },
+        { status: 403 }
+      );
+    }
+
+    // テンプレートIDの所有権チェック（提供されている場合）
+    if (template_id) {
+      const { data: template, error: templateError } = await supabaseAdmin
+        .from("templates")
+        .select("user_id")
+        .eq("id", template_id)
+        .single();
+
+      if (templateError || !template) {
+        return NextResponse.json(
+          { error: "Template not found" },
+          { status: 404 }
+        );
+      }
+
+      if (template.user_id !== user.id) {
+        return NextResponse.json(
+          { error: "Forbidden: Template does not belong to user" },
+          { status: 403 }
+        );
+      }
     }
 
     // Replace Twitch URL with short link for click tracking
@@ -92,6 +135,7 @@ export async function POST(
       idempotency_key: idempotencyKey,
       post_id: postResult.id,
       template_id: template_id || null, // Track which template was used (if provided)
+      body_text: bodyWithShortLink, // 投稿本文を保存
       error: errorMessage,
       latency_ms: latencyMs,
     });

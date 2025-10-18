@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
-import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { supabaseAdmin } from "@/lib/db";
 
 // Schema for settings validation
 const SettingsSchema = z.object({
@@ -17,18 +17,6 @@ const SettingsSchema = z.object({
  */
 export async function GET(req: NextRequest) {
   try {
-    // Supabase Admin クライアントを関数内で初期化
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    );
-
     const cookieStore = await cookies();
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -98,18 +86,6 @@ export async function GET(req: NextRequest) {
  */
 export async function PUT(req: NextRequest) {
   try {
-    // Supabase Admin クライアントを関数内で初期化
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    );
-
     const cookieStore = await cookies();
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -137,6 +113,23 @@ export async function PUT(req: NextRequest) {
     const body = await req.json();
     const validatedData = SettingsSchema.parse(body);
 
+    // SECURITY: Verify template ownership if default_template_id is being set
+    if (validatedData.default_template_id) {
+      const { data: template, error: templateError } = await supabaseAdmin
+        .from("templates")
+        .select("id")
+        .eq("id", validatedData.default_template_id)
+        .eq("user_id", user.id)  // SECURITY: Verify template belongs to user
+        .single();
+
+      if (templateError || !template) {
+        return NextResponse.json(
+          { error: "Template not found or does not belong to you" },
+          { status: 403 }
+        );
+      }
+    }
+
     // Upsert settings (insert or update)
     const { error: upsertError } = await supabaseAdmin
       .from("user_settings")
@@ -163,7 +156,7 @@ export async function PUT(req: NextRequest) {
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: "Invalid input", details: error.errors },
+        { error: "Invalid input", details: error.issues },
         { status: 400 }
       );
     }

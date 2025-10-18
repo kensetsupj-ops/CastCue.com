@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/db";
+import { createClient } from "@/lib/supabase/server";
+import { selectTemplateForABTest } from "@/lib/ab-test";
 
 /**
  * Get draft by ID
@@ -7,12 +9,23 @@ import { supabaseAdmin } from "@/lib/db";
  */
 export async function GET(
   req: NextRequest,
-  { params }: { params: { draftId: string } }
+  { params }: { params: Promise<{ draftId: string }> }
 ) {
   try {
-    const { draftId } = params;
+    const { draftId } = await params;
 
-    // Get draft with stream info
+    // 認証チェック
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    // SECURITY: Get draft with ownership check in single query to prevent enumeration
     const { data: draft, error: draftError } = await supabaseAdmin
       .from("drafts")
       .select(`
@@ -26,8 +39,10 @@ export async function GET(
         )
       `)
       .eq("id", draftId)
+      .eq("user_id", user.id)  // SECURITY: Combined query prevents timing/enumeration attacks
       .single();
 
+    // SECURITY: Return generic 404 for both non-existent and unauthorized drafts
     if (draftError || !draft) {
       return NextResponse.json(
         { error: "Draft not found" },
@@ -35,23 +50,21 @@ export async function GET(
       );
     }
 
-    // Get user's default template for initial body
-    const { data: template } = await supabaseAdmin
-      .from("templates")
-      .select("*")
-      .eq("user_id", draft.user_id)
-      .eq("variant", "A")
-      .limit(1)
-      .single();
+    // Get template for initial body
+    // This will use default template if set, otherwise use most recently created
+    // Falls back to system default template if user has no templates
+    const template = await selectTemplateForABTest(draft.user_id);
 
-    // Render template if available
-    let defaultTemplate = "";
-    if (template) {
-      defaultTemplate = template.body
-        .replace(/{title}/g, draft.title)
-        .replace(/{category}/g, "")
-        .replace(/{twitch_url}/g, draft.twitch_url);
-    }
+    // Render template (always available - falls back to system default)
+    // Note: {twitch_url} is always added at the end automatically
+    let defaultTemplate = template.body
+      .replace(/{twitch_url}/g, "") // Remove {twitch_url} placeholder if it exists (will be added at the end)
+      .replace(/{title}/g, draft.title) // Support {title} for backward compatibility
+      .replace(/\{配信タイトル\}/g, draft.title) // Support {配信タイトル} placeholder
+      .trim(); // Remove trailing whitespace
+
+    // Always add Twitch URL at the end
+    defaultTemplate = `${defaultTemplate}\n${draft.twitch_url}`;
 
     // Get past effective posts (top 5 by lift)
     const { data: pastDeliveries } = await supabaseAdmin
@@ -80,6 +93,9 @@ export async function GET(
       conversion: 0, // TODO: Calculate conversion
       datetime: new Date(delivery.created_at).toLocaleDateString("ja-JP"),
     })) || [];
+
+    console.log('[api/drafts] Past deliveries count:', pastDeliveries?.length || 0);
+    console.log('[api/drafts] Past posts count:', pastPosts.length);
 
     return NextResponse.json({
       draft,

@@ -48,18 +48,18 @@ export async function POST(req: NextRequest) {
 
     const response = NextResponse.json({ auth_url: authUrl });
 
-    // Set cookies with httpOnly
+    // Set cookies with httpOnly and sameSite=strict for CSRF protection
     response.cookies.set("oauth_code_verifier", codeVerifier, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: "strict",  // SECURITY: Strict mode prevents CSRF
       maxAge: 600, // 10 minutes
     });
 
     response.cookies.set("oauth_state", state, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: "strict",  // SECURITY: Strict mode prevents CSRF
       maxAge: 600,
     });
 
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
     response.cookies.set("oauth_user_id", user.id, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: "strict",  // SECURITY: Strict mode prevents CSRF
       maxAge: 600,
     });
 

@@ -33,7 +33,7 @@ export default function AboutPage() {
               About CastCue
             </h1>
             <p className="text-xl text-neutral-sub leading-relaxed">
-              配信者が配信に集中できる世界を目指して
+              配信に没頭できる世界を目指して
             </p>
           </div>
         </div>
@@ -51,10 +51,10 @@ export default function AboutPage() {
                 CastCueは、配信者の方々が「配信」という本質的な活動に集中できるよう、告知作業を自動化するツールです。
               </p>
               <p className="text-body text-neutral-sub leading-relaxed">
-                「配信開始の告知を忘れた」「手動でツイートする時間がない」「告知の効果がわからない」—— そんな配信者の悩みを解決するために、CastCueは生まれました。
+                「配信を始めたのに、誰にも届いていない」「告知を忘れてしまう」「告知の手間がストレス」—— そんな配信者の悩みを解決するために、CastCueは生まれました。
               </p>
               <p className="text-body text-neutral-sub leading-relaxed">
-                配信者の皆さんが、告知作業から解放され、より良いコンテンツ作りに時間を使えるよう。
+                配信者の皆さんが、告知忘れの機会損失から解放され、配信に没頭できるよう。
                 私たちはそんな世界を目指しています。
               </p>
             </div>
@@ -99,10 +99,10 @@ export default function AboutPage() {
                 開発者の友人が配信者であり、「配信開始の告知を忘れて視聴者が集まらなかった」という困った声を聴いたことから、CastCueの開発が始まりました。
               </p>
               <p className="text-body text-neutral-sub leading-relaxed">
-                「自動化できないだろうか？」という単純な疑問が、このプロジェクトのスタートでした。
+                「告知忘れの機会損失をゼロにできないだろうか？」という単純な疑問が、このプロジェクトのスタートでした。
               </p>
               <p className="text-body text-neutral-sub leading-relaxed">
-                現在は招待制ベータ版として、配信者の方々と一緒に開発を進めています。
+                現在はベータ版として、配信者の方々と一緒に開発を進めています。
                 皆さんのフィードバックをもとに、日々改善を重ねています。
               </p>
             </div>

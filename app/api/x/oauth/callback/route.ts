@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { exchangeCodeForToken, getCurrentUser } from "@/lib/x";
 import { encrypt } from "@/lib/crypto";
 import { supabaseAdmin } from "@/lib/db";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 
 /**
  * X OAuth callback
  * GET /api/x/oauth/callback
+ *
+ * SECURITY: Re-authenticates user to prevent OAuth state hijacking
  */
 export async function GET(req: NextRequest) {
   try {
@@ -35,25 +39,62 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // SECURITY FIX: Re-authenticate user to prevent OAuth state hijacking
+    // Do NOT trust oauth_user_id cookie alone - validate against current session
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          },
+        },
+      }
+    );
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.redirect(
+        `${process.env.APP_ORIGIN}/integrations?error=authentication_required`
+      );
+    }
+
+    // Get user_id from cookie (stored during OAuth start)
+    const cookieUserId = req.cookies.get("oauth_user_id")?.value;
+
+    // SECURITY: Verify cookie user_id matches authenticated user
+    if (!cookieUserId || cookieUserId !== user.id) {
+      console.error("OAuth security violation: user_id mismatch", {
+        cookieUserId,
+        authenticatedUserId: user.id,
+      });
+      return NextResponse.redirect(
+        `${process.env.APP_ORIGIN}/integrations?error=security_violation`
+      );
+    }
+
     // Exchange code for token
     const tokens = await exchangeCodeForToken(code, codeVerifier);
 
     // Get user info
     const userInfo = await getCurrentUser(tokens.access_token);
 
-    // Get user_id from cookie (stored during OAuth start)
-    const userId = req.cookies.get("oauth_user_id")?.value;
-    if (!userId) {
-      return NextResponse.redirect(
-        `${process.env.APP_ORIGIN}/integrations?error=missing_user_id`
-      );
-    }
-
-    // Store encrypted tokens
+    // Store encrypted tokens (use authenticated user.id, not cookie)
     const expiresAt = new Date(Date.now() + tokens.expires_in * 1000);
 
     await supabaseAdmin.from("x_connections").upsert({
-      user_id: userId,
+      user_id: user.id,  // Use authenticated user ID
       scope: tokens.scope,
       access_token_cipher: encrypt(tokens.access_token),
       refresh_token_cipher: encrypt(tokens.refresh_token),

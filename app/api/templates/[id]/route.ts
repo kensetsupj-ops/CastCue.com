@@ -1,18 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
-import { createClient as createAdmin } from "@supabase/supabase-js";
+import { supabaseAdmin } from "@/lib/db";
 import { z } from "zod";
-
-const supabaseAdmin = createAdmin(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 const TemplateSchema = z.object({
   name: z.string().min(1).max(100),
   body: z.string().min(1).max(500),
-  variant: z.enum(["A", "B"]),
+  category: z.string().optional(),
 });
 
 /**
@@ -56,7 +51,7 @@ export async function PUT(
 
     // リクエストボディ取得
     const body = await req.json();
-    const { name, body: templateBody, variant } = TemplateSchema.parse(body);
+    const { name, body: templateBody, category } = TemplateSchema.parse(body);
 
     // テンプレート更新（user_idチェック付き）
     const { data: template, error } = await supabaseAdmin
@@ -64,7 +59,7 @@ export async function PUT(
       .update({
         name,
         body: templateBody,
-        variant,
+        category: category || "",
       })
       .eq("id", templateId)
       .eq("user_id", user.id)
@@ -85,7 +80,9 @@ export async function PUT(
       template: {
         id: template.id,
         name: template.name,
-        variant: template.variant,
+        category: template.category || "",
+        usageCount: 0,
+        avgCalledViewers: 0,
         body: template.body,
       },
     });
@@ -94,7 +91,7 @@ export async function PUT(
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: "Validation error", details: error.errors },
+        { error: "Validation error", details: error.issues },
         { status: 400 }
       );
     }

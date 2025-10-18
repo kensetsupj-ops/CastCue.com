@@ -3,6 +3,7 @@ import {
   verifyTwitchSignature,
   getTwitchMessageType,
   StreamOnlineEventSchema,
+  StreamUpdateEventSchema,
   VerificationSchema,
 } from "@/lib/twitch";
 import { supabaseAdmin } from "@/lib/db";
@@ -16,7 +17,7 @@ export async function POST(req: NextRequest) {
   try {
     const rawBody = await req.text();
 
-    // Verify signature
+    // Verify signature (HMAC-SHA256 provides sufficient replay protection)
     if (!verifyTwitchSignature(req.headers, rawBody)) {
       return new NextResponse("Forbidden", { status: 403 });
     }
@@ -30,11 +31,12 @@ export async function POST(req: NextRequest) {
       return new NextResponse(parsed.challenge, { status: 200 });
     }
 
-    // Handle stream.online notification
+    // Handle stream notifications
     if (messageType === "notification") {
-      const parsed = StreamOnlineEventSchema.parse(body);
+      const eventType = body.subscription?.type;
 
-      if (parsed.subscription.type === "stream.online") {
+      if (eventType === "stream.online") {
+        const parsed = StreamOnlineEventSchema.parse(body);
         const messageId = req.headers.get("twitch-eventsub-message-id");
 
         // Check idempotency
@@ -59,6 +61,8 @@ export async function POST(req: NextRequest) {
 
         if (!twitchAccount) {
           console.error("Twitch account not found for broadcaster:", parsed.event.broadcaster_user_id);
+          // Webhookは常に2xxを返すべき（エラーでも再試行される可能性があるため）
+          // ただし、ログには記録する
           return new NextResponse(null, { status: 204 });
         }
 
@@ -73,6 +77,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Create stream record
+        const thumbnailUrl = streamInfo.thumbnail_url.replace("{width}", "1920").replace("{height}", "1080");
         const { data: stream } = await supabaseAdmin
           .from("streams")
           .insert({
@@ -80,6 +85,7 @@ export async function POST(req: NextRequest) {
             platform: "twitch",
             stream_id: parsed.event.id,
             started_at: parsed.event.started_at,
+            thumbnail_url: thumbnailUrl,
           })
           .select("id")
           .single();
@@ -98,7 +104,7 @@ export async function POST(req: NextRequest) {
             stream_id: stream.id,
             title: streamInfo.title,
             twitch_url: twitchUrl,
-            image_url: streamInfo.thumbnail_url.replace("{width}", "1920").replace("{height}", "1080"),
+            image_url: thumbnailUrl,
             status: "pending",
           })
           .select("id")
@@ -124,6 +130,98 @@ export async function POST(req: NextRequest) {
           // Don't fail the webhook if push fails
         }
 
+        return new NextResponse(null, { status: 204 });
+      } else if (eventType === "stream.update") {
+        // Handle stream.update for game change detection
+        const updateParsed = StreamUpdateEventSchema.parse(body);
+
+        // Get user_id from broadcaster_id
+        const { data: twitchAccount } = await supabaseAdmin
+          .from("twitch_accounts")
+          .select("user_id")
+          .eq("broadcaster_id", updateParsed.event.broadcaster_user_id)
+          .single();
+
+        if (!twitchAccount) {
+          console.error("Twitch account not found for broadcaster:", updateParsed.event.broadcaster_user_id);
+          return new NextResponse(null, { status: 204 });
+        }
+
+        // Find active stream for this broadcaster
+        const { data: stream } = await supabaseAdmin
+          .from("streams")
+          .select("id, current_category")
+          .eq("user_id", twitchAccount.user_id)
+          .is("ended_at_est", null)
+          .order("started_at", { ascending: false })
+          .limit(1)
+          .single();
+
+        if (!stream) {
+          console.log("No active stream found for game change");
+          return new NextResponse(null, { status: 204 });
+        }
+
+        const currentCategory = stream.current_category;
+        const newCategory = updateParsed.event.category_name;
+
+        // Check if category changed
+        if (currentCategory && currentCategory !== newCategory) {
+          console.log(`Game change detected: ${currentCategory} -> ${newCategory}`);
+
+          // Get stream info for thumbnail
+          const { TwitchClient } = await import("@/lib/twitch");
+          const twitchClient = new TwitchClient();
+          const streamInfo = await twitchClient.getStream(updateParsed.event.broadcaster_user_id);
+
+          const thumbnailUrl = streamInfo?.thumbnail_url.replace("{width}", "1920").replace("{height}", "1080") || "";
+
+          // Handle game change
+          const { handleGameChange } = await import("@/lib/game-change");
+          const result = await handleGameChange(
+            twitchAccount.user_id,
+            stream.id,
+            currentCategory,
+            newCategory,
+            updateParsed.event.broadcaster_user_login,
+            updateParsed.event.title,
+            thumbnailUrl
+          );
+
+          if (result.success && result.draftId) {
+            // Send Web Push notification for game change
+            const { sendGameChangeNotification } = await import("@/lib/push");
+            try {
+              await sendGameChangeNotification(
+                twitchAccount.user_id,
+                result.draftId,
+                currentCategory,
+                newCategory,
+                `https://twitch.tv/${updateParsed.event.broadcaster_user_login}`
+              );
+              console.log(`[webhook] Game change notification sent for draft ${result.draftId}`);
+            } catch (pushError) {
+              console.error("[webhook] Failed to send game change notification:", pushError);
+            }
+          } else {
+            console.log(`[webhook] Game change not notified: ${result.reason}`);
+          }
+        } else if (!currentCategory) {
+          // First time setting category for this stream
+          await supabaseAdmin
+            .from("streams")
+            .update({ current_category: newCategory })
+            .eq("id", stream.id);
+        }
+
+        return new NextResponse(null, { status: 204 });
+      } else {
+        // Unknown event type - log for debugging
+        console.warn(`[webhook] Unknown Twitch notification event type: ${eventType}`, {
+          eventType,
+          subscriptionId: body.subscription?.id,
+          subscriptionStatus: body.subscription?.status,
+        });
         return new NextResponse(null, { status: 204 });
       }
     }

@@ -1,6 +1,6 @@
 import PageLayout from "@/components/PageLayout";
 import { Card, CardContent } from "@/components/ui/card";
-import { Bell, BarChart3, Shield, Zap, Users, Clock } from "lucide-react";
+import { Bell, BarChart3, Shield, Zap, Edit3, Clock } from "lucide-react";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -12,22 +12,42 @@ export default function FeaturesPage() {
   const features = [
     {
       icon: Bell,
-      title: "自動で開始ツイート",
-      description: "配信を始めると、自動でXにツイートされます。手動での投稿を忘れる心配がありません。",
+      title: "忘れない手間もかからない",
+      description: "配信開始時にブラウザ通知が届きます。「テンプレートで投稿」「編集して投稿」「スキップ」から選べます。",
       details: [
-        "Twitch配信開始を即座に検知",
-        "カスタマイズ可能なツイート内容",
-        "配信ごとに内容を変更可能",
+        "配信開始から平均30秒以内に検知",
+        "ブラウザ通知で即座にお知らせ",
+        "通知を見逃しても自動投稿可能",
+      ]
+    },
+    {
+      icon: Edit3,
+      title: "柔軟に編集できる",
+      description: "編集画面では過去に効果が高かった文面も表示。それを参考に微調整することもできます。",
+      details: [
+        "テンプレートを自由にカスタマイズ",
+        "配信タイトルやゲーム名を自動挿入",
+        "配信ごとに内容を編集可能",
       ]
     },
     {
       icon: BarChart3,
-      title: "効果測定グラフ",
-      description: "自動ツイートの前後で、どれだけ視聴者が増えたかグラフで確認できます。",
+      title: "効果が見える数字",
+      description: "告知前と告知後の視聴者数を比較して、「告知で何人増えたか（推定）」を算出します。",
       details: [
-        "視聴者数の推移をリアルタイム表示",
-        "ツイート効果を数値化",
+        "視聴者数の推移をグラフで表示",
+        "告知効果を数値化",
         "過去のデータと比較分析",
+      ]
+    },
+    {
+      icon: Zap,
+      title: "3つの使い方から選べる",
+      description: "完全自動派、確認派、選択派。あなたのペースで運用できます。",
+      details: [
+        "完全お任せの自動投稿モード",
+        "編集してから投稿するモード",
+        "気が向いた時だけ投稿するモード",
       ]
     },
     {
@@ -41,32 +61,12 @@ export default function FeaturesPage() {
       ]
     },
     {
-      icon: Zap,
-      title: "高速通知",
-      description: "配信開始から5秒以内に自動ツイート。視聴者を逃しません。",
-      details: [
-        "平均5秒で通知完了",
-        "安定した稼働率",
-        "エラー発生時の自動リトライ",
-      ]
-    },
-    {
-      icon: Users,
-      title: "複数パターンのテスト",
-      description: "複数のツイート文を登録して、どれが効果的か比較できます。",
-      details: [
-        "最大10パターンまで登録可能",
-        "ランダムまたは順番に投稿",
-        "効果測定で最適なパターンを発見",
-      ]
-    },
-    {
       icon: Clock,
-      title: "時間節約",
-      description: "告知作業にかかる時間をゼロに。配信に集中できます。",
+      title: "配信に集中できる",
+      description: "告知作業にかかる時間をゼロに。告知忘れの不安から解放されます。",
       details: [
         "月平均2時間の作業時間削減",
-        "告知忘れによる機会損失を防止",
+        "告知忘れの機会損失を防止",
         "ストレスフリーな配信生活",
       ]
     },
@@ -82,7 +82,8 @@ export default function FeaturesPage() {
               機能
             </h1>
             <p className="text-xl text-neutral-sub leading-relaxed">
-              CastCueが提供する、配信告知を自動化するための機能をご紹介します。
+              配信に没頭できるようになった。<br />
+              告知忘れの機会損失をゼロにする機能をご紹介します。
             </p>
           </div>
         </div>

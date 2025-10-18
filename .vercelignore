@@ -1,0 +1,34 @@
+# Local development files
+.env.local
+.env*.local
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Development files
+.vscode/
+.idea/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Test files
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+__tests__/
+
+# Build artifacts (handled by Vercel)
+.next/
+out/
+build/
+
+# Temporary files
+*.tmp
+*.swp
+*.swo
+.DS_Store

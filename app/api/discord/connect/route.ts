@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           error: "Invalid webhook URL format",
-          details: error.errors,
+          details: error.issues,
         },
         { status: 400 }
       );

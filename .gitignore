@@ -43,3 +43,12 @@ next-env.d.ts
 
 # Windows special files
 nul
+
+# Documentation (deployment不要)
+docs/
+
+# Claude Code settings (個人設定)
+.claude/
+
+# Build logs
+build-output.txt

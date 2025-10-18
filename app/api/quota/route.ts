@@ -1,22 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getQuota } from "@/lib/quota";
+import { createClient } from "@/lib/supabase/server";
 
 /**
  * Get quota information
- * GET /api/quota?user_id=xxx
+ * GET /api/quota
+ *
+ * SECURITY: Requires authentication
+ * Returns quota information for the authenticated user only
  */
 export async function GET(req: NextRequest) {
   try {
-    const userId = req.nextUrl.searchParams.get("user_id");
+    // SECURITY: Require authentication
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-    if (!userId) {
+    if (authError || !user) {
       return NextResponse.json(
-        { error: "user_id is required" },
-        { status: 400 }
+        { error: "Unauthorized" },
+        { status: 401 }
       );
     }
 
-    const quota = await getQuota(userId);
+    // SECURITY: Only allow users to view their own quota
+    const quota = await getQuota(user.id);
 
     return NextResponse.json({
       user_remaining: quota.user_remaining,

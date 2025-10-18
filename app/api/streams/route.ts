@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
-import { createClient as createAdmin } from "@supabase/supabase-js";
+import { supabaseAdmin } from "@/lib/db";
 
 /**
  * GET /api/streams
@@ -9,17 +9,6 @@ import { createClient as createAdmin } from "@supabase/supabase-js";
  */
 export async function GET(req: NextRequest) {
   try {
-    // Supabase Admin クライアントを関数内で初期化
-    const supabaseAdmin = createAdmin(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    );
 
     // Supabase認証
     const cookieStore = await cookies();
@@ -50,9 +39,10 @@ export async function GET(req: NextRequest) {
     }
 
     // 配信履歴を取得（samplesと一緒に）
+    // Note: thumbnail_url might not exist in database yet
     const { data: streams, error: streamsError } = await supabaseAdmin
       .from("streams")
-      .select("*, samples(*)")
+      .select("id, user_id, platform, stream_id, started_at, ended_at_est, peak, samples(*)")
       .eq("user_id", user.id)
       .order("started_at", { ascending: false })
       .limit(50);
@@ -126,6 +116,7 @@ export async function GET(req: NextRequest) {
         peakTime,
         estimatedWatchTime,
         platform: stream.platform || "twitch",
+        thumbnailUrl: null, // TODO: Add thumbnail support after migration is fully applied
       };
     });
 

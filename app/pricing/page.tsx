@@ -7,7 +7,7 @@ import { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "料金｜CastCue",
-  description: "現在は招待制ベータ版として、完全無料でご利用いただけます。",
+  description: "現在はベータ版として、完全無料でご利用いただけます。",
 };
 
 export default function PricingPage() {
@@ -47,7 +47,8 @@ export default function PricingPage() {
               料金
             </h1>
             <p className="text-xl text-neutral-sub leading-relaxed">
-              現在は招待制ベータ版として、完全無料でご利用いただけます。
+              まずはベータ版で。<br />
+              現在は完全無料でご利用いただけます。
             </p>
           </div>
         </div>
@@ -64,7 +65,7 @@ export default function PricingPage() {
                   {/* Badge */}
                   <div className="inline-flex items-center gap-2 text-sm text-primary bg-primary/10 px-6 py-3 rounded-full border border-primary/20">
                     <Sparkles className="h-4 w-4" />
-                    招待制ベータ版
+                    ベータ版
                   </div>
 
                   {/* Price */}
@@ -98,7 +99,7 @@ export default function PricingPage() {
                   </Link>
 
                   <p className="text-xs text-neutral-sub">
-                    クレジットカード不要 • 招待コード不要 • 30秒で登録完了
+                    招待コード不要 • 30秒で登録完了
                   </p>
                 </div>
               </CardContent>

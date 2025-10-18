@@ -6,6 +6,7 @@ const TAG_LENGTH = 16;
 
 /**
  * Get encryption key from environment
+ * SECURITY: Validates key length for AES-256 (32 bytes)
  */
 function getEncryptionKey(): Buffer {
   const key = process.env.DATA_ENCRYPTION_KEY;
@@ -15,7 +16,16 @@ function getEncryptionKey(): Buffer {
 
   // Remove 'base64:' prefix if present
   const keyString = key.startsWith("base64:") ? key.slice(7) : key;
-  return Buffer.from(keyString, "base64");
+  const keyBuffer = Buffer.from(keyString, "base64");
+
+  // SECURITY: Ensure key is exactly 32 bytes for AES-256
+  if (keyBuffer.length !== 32) {
+    throw new Error(
+      `Encryption key must be exactly 32 bytes for AES-256-GCM (got ${keyBuffer.length} bytes)`
+    );
+  }
+
+  return keyBuffer;
 }
 
 /**
@@ -37,6 +47,7 @@ export function encrypt(text: string): string {
 
 /**
  * Decrypt a string using AES-256-GCM
+ * SECURITY: Validates IV and auth tag lengths before decryption
  */
 export function decrypt(ciphertext: string): string {
   const key = getEncryptionKey();
@@ -49,6 +60,14 @@ export function decrypt(ciphertext: string): string {
   const iv = Buffer.from(parts[0], "hex");
   const tag = Buffer.from(parts[1], "hex");
   const encrypted = parts[2];
+
+  // SECURITY: Validate IV and tag lengths to prevent tampering
+  if (iv.length !== IV_LENGTH) {
+    throw new Error(`Invalid IV length: expected ${IV_LENGTH}, got ${iv.length}`);
+  }
+  if (tag.length !== TAG_LENGTH) {
+    throw new Error(`Invalid auth tag length: expected ${TAG_LENGTH}, got ${tag.length}`);
+  }
 
   const decipher = createDecipheriv(ALGORITHM, key, iv);
   decipher.setAuthTag(tag);

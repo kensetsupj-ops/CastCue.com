@@ -4,9 +4,41 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
+// SECURITY: Whitelist allowed push notification endpoint domains
+// Only allow endpoints from known, trusted push service providers
+const ALLOWED_PUSH_DOMAINS = [
+  "fcm.googleapis.com",                    // Firebase Cloud Messaging (Chrome, Android)
+  "updates.push.services.mozilla.com",     // Mozilla Push Service (Firefox)
+  "updates-autopush.stage.mozaws.net",     // Mozilla Push Service (Firefox staging)
+  "updates-autopush.dev.mozaws.net",       // Mozilla Push Service (Firefox dev)
+  "wns2-",                                 // Windows Push Notification Service (prefix match)
+  "notify.windows.com",                    // Windows Push (legacy)
+  "push.apple.com",                        // Apple Push Notification Service (Safari)
+  "web.push.apple.com",                    // Apple Push (web)
+];
+
 // Schema for push subscription validation
 const PushSubscriptionSchema = z.object({
-  endpoint: z.string().url(),
+  endpoint: z.string().url().refine(
+    (url) => {
+      try {
+        const urlObj = new URL(url);
+        const hostname = urlObj.hostname;
+
+        // Check if hostname matches any allowed domain (exact match or prefix)
+        return ALLOWED_PUSH_DOMAINS.some(domain =>
+          hostname === domain ||
+          hostname.endsWith(`.${domain}`) ||
+          (domain.endsWith("-") && hostname.startsWith(domain))  // Prefix match for wns2-*
+        );
+      } catch {
+        return false;
+      }
+    },
+    {
+      message: "Push endpoint must be from a trusted push service provider (FCM, Mozilla Push, WNS, or APNs)"
+    }
+  ),
   keys: z.object({
     p256dh: z.string(),
     auth: z.string(),
@@ -58,6 +90,34 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const subscription = PushSubscriptionSchema.parse(body);
 
+    // SECURITY: Limit push subscriptions to 5 devices per user
+    const MAX_SUBSCRIPTIONS = 5;
+
+    // Count existing subscriptions for this user
+    const { count } = await supabaseAdmin
+      .from("push_subscriptions")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id);
+
+    // If at limit, remove oldest subscription before adding new one
+    if (count && count >= MAX_SUBSCRIPTIONS) {
+      const { data: oldest } = await supabaseAdmin
+        .from("push_subscriptions")
+        .select("endpoint")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .single();
+
+      if (oldest) {
+        await supabaseAdmin
+          .from("push_subscriptions")
+          .delete()
+          .eq("endpoint", oldest.endpoint);
+        console.log(`[push] Removed oldest subscription for user ${user.id}`);
+      }
+    }
+
     // Upsert the push subscription
     const { error: upsertError } = await supabaseAdmin
       .from("push_subscriptions")
@@ -85,7 +145,7 @@ export async function POST(req: NextRequest) {
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: "Invalid subscription format", details: error.errors },
+        { error: "Invalid subscription format", details: error.issues },
         { status: 400 }
       );
     }

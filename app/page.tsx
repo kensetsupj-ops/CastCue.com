@@ -2,76 +2,130 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { BarChart3, Shield, ArrowRight, Check, TrendingUp, Users, Clock, Sparkles, Bell } from "lucide-react";
+import { BarChart3, Shield, ArrowRight, Check, TrendingUp, Users, Clock, Sparkles, Bell, Edit3, Zap, Target } from "lucide-react";
 import ScrollToTop from "@/components/ScrollToTop";
+import ScrollReveal from "@/components/ScrollReveal";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "CastCue｜配信開始を、自動でツイート。",
-  description: "Twitch配信の開始を自動検知し、X（Twitter）で即座に自動ツイート。告知の効果をリアルタイムで可視化します。",
+  title: "CastCue｜配信開始を自動でツイート。",
+  description: "Twitch配信の開始を自動検知し、X（Twitter）で即座に自動ツイート。告知の効果をリアルタイムで可視化。配信前のマーケティングを自動化します。",
 };
 
 export default function Home() {
   const features = [
     {
       icon: Bell,
-      title: "自動で開始ツイート",
-      description: "配信を始めると、自動でXにツイートされます。",
-      stat: "5秒",
+      title: "忘れない手間もかからない",
+      description: "配信開始時にブラウザ通知が届きます。「テンプレートで投稿」「編集して投稿」「スキップ」から選べます。",
+      stat: "30秒",
+    },
+    {
+      icon: Edit3,
+      title: "柔軟に編集できる",
+      description: "編集画面では過去に効果が高かった文面も表示。それを参考に微調整することもできます。",
+      stat: "自由",
     },
     {
       icon: BarChart3,
-      title: "効果がわかる",
-      description: "自動ツイートの前後で、どれだけ視聴者が増えたかグラフで確認できます",
+      title: "効果が見える数字",
+      description: "告知前と告知後の視聴者数を比較して、「告知で何人呼べたか」を自動算出。配信前のマーケティング効果を可視化します。",
       stat: "+18%",
     },
+  ];
+
+  const useCases = [
     {
-      icon: Shield,
-      title: "安心・安全",
-      description: "あなたのアカウント情報は暗号化されて、安全に保護されています",
-      stat: "安全",
+      icon: Zap,
+      title: "完全自動派",
+      subtitle: "「配信に集中したいから、全部自動で」",
+      description: "事前にテンプレートを登録し、未操作時は自動投稿。通知を確認せず配信に集中。",
+      result: "完全にお任せ、手間ゼロ。忘れる心配もゼロ。",
+    },
+    {
+      icon: Edit3,
+      title: "確認派",
+      subtitle: "「文面は確認してから投稿したい」",
+      description: "通知が来たら「編集して投稿」を選択。配信タイトルや気分に合わせて微調整。",
+      result: "柔軟に、でも迅速に。忘れることはない。",
+    },
+    {
+      icon: Target,
+      title: "選択派",
+      subtitle: "「気が向いた時だけ投稿したい」",
+      description: "未操作時は「スキップ」に設定。通知が来たら、その時の気分で判断。",
+      result: "あなたのペースで。でも通知が来るから忘れない。",
     },
   ];
 
   const steps = [
     {
       step: "1",
-      title: "Twitchアカウントを接続",
-      description: "配信開始を自動検知するため、Twitchアカウントを接続します",
-      time: "30秒",
+      title: "検知",
+      description: "配信開始から平均30秒以内に検知",
     },
     {
       step: "2",
-      title: "Xアカウントを連携",
-      description: "告知先のX（Twitter）アカウントを設定します",
-      time: "1分",
+      title: "合図",
+      description: "ブラウザ通知で確認→そのまま投稿 or 編集して投稿",
     },
     {
       step: "3",
-      title: "テンプレートを作成",
-      description: "告知メッセージのテンプレートを作成。複数パターンのテストも可能です",
-      time: "2分",
-    },
-    {
-      step: "4",
-      title: "配信を開始",
-      description: "あとは配信を始めるだけ。自動で告知してダッシュボードで効果を確認",
-      time: "0秒",
+      title: "測定",
+      description: "告知前後の視聴者数を記録して効果を算出",
     },
   ];
 
-  const stats = [
-    { value: "5秒", label: "平均通知速度" },
-    { value: "99.9%", label: "稼働率" },
-    { value: "10,000+", label: "月間配信通知" },
-    { value: "500+", label: "アクティブ配信者" },
+  const testimonials = [
+    {
+      quote: "配信開始のツイート、3回に1回は忘れてた。CastCueを使ってから、告知忘れがゼロになった。",
+      author: "週3配信のゲーム実況者",
+    },
+    {
+      quote: "告知の手間がなくなって、配信開始がスムーズになった。視聴者数も平均で15%くらい増えた気がする。",
+      author: "Apexストリーマー",
+    },
+    {
+      quote: "通知が来るから忘れることがないし、編集もサクッとできるから手間もかからない。",
+      author: "雑談配信者",
+    },
+  ];
+
+  const faqs = [
+    {
+      question: "配信の度に設定が必要ですか？",
+      answer: "不要です。初回にTwitchとXを接続し、テンプレートを登録すれば、あとは配信するだけで自動で動きます。",
+    },
+    {
+      question: "投稿内容は編集できますか？",
+      answer: "できます。配信開始時にブラウザ通知が届くので、「そのまま投稿」または「編集して投稿」を選べます。編集画面では、過去に効果が高かった文面も表示されるので、それを参考に微調整することもできます。また、設定で「未操作時の挙動」を選べるので、自動投稿（完全お任せ）またはスキップ（投稿しない）のどちらかを選択できます。",
+    },
+    {
+      question: "通知に気づかなかったらどうなりますか？",
+      answer: "設定で「未操作時の挙動」を選べます。「自動投稿」に設定すれば、猶予時間後に自動で投稿されます。「スキップ」に設定すれば、何もせず記録だけ残ります。猶予時間は30秒〜120秒で自由に設定できます。",
+    },
+    {
+      question: "配信が終わったら何か設定が必要ですか？",
+      answer: "不要です。CastCueは配信の開始を検知して告知しますが、配信終了後に特別な操作は必要ありません。視聴者数のサンプリングは自動で終了し、ダッシュボードで効果を確認できる状態になります。",
+    },
+    {
+      question: "投稿の効果は分かりますか？",
+      answer: "はい、分かります。告知後の視聴者増加数（呼べた人数）やクリック数を自動追跡し、ダッシュボードで確認できます。Twitchダッシュボードでは見えない「配信前のマーケティング」効果を可視化します。",
+    },
+    {
+      question: "告知を忘れたらどうなりますか？",
+      answer: "CastCueは配信開始を自動で検知するので、忘れることはありません。必ずブラウザ通知が届きます。完全自動モードにすれば、通知を見逃しても自動で投稿されます。",
+    },
+    {
+      question: "YouTubeやTikTokには対応していますか？",
+      answer: "現在はTwitch専用です。他プラットフォームは今後の予定です。",
+    },
   ];
 
   const benefits = [
     "告知を自動で投稿",
-    "配信ごとに内容を変えられる",
+    "そのまま投稿も編集も選べる",
     "視聴者の増加が数字でわかる",
-    "制限を気にせず使える",
     "配信に集中できる",
     "複数パターンで効果を比較",
     "わかりやすいグラフで改善",
@@ -133,19 +187,17 @@ export default function Home() {
 
             {/* Main Headline */}
             <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-white leading-tight tracking-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] animate-fade-in-up" style={{ animationDelay: '200ms' }}>
-              配信開始を、自動でツイート。
+              配信の幕開けを逃さない。
             </h2>
 
             {/* Sub Headline */}
-            <div className="bg-black/30 backdrop-blur-sm rounded-lg p-4 border border-white/10 animate-fade-in-up inline-block" style={{ animationDelay: '300ms' }}>
-              <p className="text-base md:text-lg text-white leading-relaxed">
-                Twitch配信の開始を<span className="font-bold text-primary-foreground">自動検知</span>し、
-                <br />
-                X（Twitter）で<span className="font-bold text-primary-foreground">即座に自動ツイート</span>。
-                <br />
-                告知の効果を<span className="font-bold text-primary-foreground">リアルタイムで可視化</span>します。
-              </p>
-            </div>
+            <p className="text-base md:text-lg text-white leading-relaxed drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] animate-fade-in-up" style={{ animationDelay: '300ms' }}>
+              配信が始まったその瞬間、あなたの代わりに告知。
+              <br />
+              そのまま投稿も、編集してから投稿も選べます。
+              <br />
+              そして、告知の効果も自動で追跡。
+            </p>
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 pt-4 animate-fade-in-up" style={{ animationDelay: '400ms' }}>
@@ -159,39 +211,78 @@ export default function Home() {
                 </Button>
               </Link>
             </div>
+          </div>
+        </div>
+      </section>
 
-            {/* Trust Indicator */}
-            <p className="text-sm text-white/90 pt-4 drop-shadow-lg bg-black/20 backdrop-blur-sm inline-block px-4 py-2 rounded-md animate-fade-in-up" style={{ animationDelay: '500ms' }}>
-              クレジットカード不要 • 招待制ベータ期間中は完全無料
-            </p>
+      {/* Why Section - 課題提示 */}
+      <section className="relative border-b border-neutral-border bg-gradient-to-b from-white via-neutral-surface to-neutral-bg overflow-hidden">
+        <div className="absolute inset-0 bg-grid-pattern opacity-[0.015]"></div>
+        <div className="absolute top-20 right-0 w-[600px] h-[600px] bg-gradient-to-bl from-danger/5 to-transparent rounded-full blur-3xl"></div>
+        <div className="container py-24 relative">
+          <div className="mx-auto max-w-4xl text-center">
+            <ScrollReveal>
+            <div className="space-y-8">
+              <h3 className="text-5xl font-bold text-neutral-ink mb-6">
+                配信を始めたのに
+                <br />
+                <span className="bg-gradient-to-r from-danger to-warning bg-clip-text text-transparent">
+                  誰にも届いていない。
+                </span>
+              </h3>
+              <div className="max-w-3xl mx-auto space-y-6 text-lg text-neutral-sub leading-relaxed">
+                <p>
+                  配信ボタンを押した瞬間から、観客は集まり始めます。<br />
+                  でも、配信設定を確認して、マイクテストをして、<br />
+                  チャットに挨拶をしていたら――
+                </p>
+                <p className="text-2xl font-bold text-danger">
+                  「あ、X（Twitter）に告知するの忘れてた」
+                </p>
+                <p>
+                  気づいた時には配信開始から10分。<br />
+                  ゴールデンタイムは、もう終わっています。
+                </p>
+                <div className="pt-6 border-t border-neutral-border">
+                  <p className="text-xl font-semibold text-neutral-ink">
+                    告知の手間と、忘れることの機会損失。<br />
+                    この2つが、あなたの配信の成長を遅らせています。
+                  </p>
+                </div>
+              </div>
+            </div>
+            </ScrollReveal>
           </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section className="border-b border-neutral-border bg-neutral-surface">
-        <div className="container py-24">
+      <section className="relative border-b border-neutral-border bg-gradient-to-br from-neutral-surface via-primary/[0.02] to-neutral-surface overflow-hidden">
+        <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-gradient-to-br from-primary/8 to-transparent rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-gradient-to-tl from-success/8 to-transparent rounded-full blur-3xl"></div>
+        <div className="container py-24 relative">
           <div className="mx-auto max-w-6xl">
-            <div className="text-center mb-16 animate-fade-in-up">
+            <ScrollReveal>
+            <div className="text-center mb-16">
               <h3 className="text-5xl font-bold text-neutral-ink mb-6">
-                Twitch配信者のための
+                CastCueはあなたの
                 <br />
                 <span className="bg-gradient-to-r from-primary to-success bg-clip-text text-transparent">
-                  完全自動化ツール
+                  「呼び込み係」
                 </span>
               </h3>
               <p className="text-lg text-neutral-sub max-w-2xl mx-auto">
-                配信開始の通知から効果測定まで、すべて自動化。
-                あなたは配信に集中するだけ。
+                配信が始まった瞬間を検知して、事前に用意した文面で即座に告知。<br />
+                もう忘れることはありません。
               </p>
             </div>
+            </ScrollReveal>
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {features.map((feature, index) => (
+                <ScrollReveal delay={index * 100} key={index}>
                 <Card
-                  key={index}
-                  className="border-neutral-border hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500 hover:-translate-y-2 group animate-fade-in-up"
-                  style={{ animationDelay: `${index * 100}ms` }}
+                  className="border-neutral-border hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500 hover:-translate-y-2 group"
                 >
                   <CardContent className="p-6 space-y-4">
                     <div className="flex items-center justify-between">
@@ -210,6 +301,7 @@ export default function Home() {
                     </p>
                   </CardContent>
                 </Card>
+                </ScrollReveal>
               ))}
             </div>
           </div>
@@ -217,22 +309,24 @@ export default function Home() {
       </section>
 
       {/* Benefits Section */}
-      <section className="border-b border-neutral-border bg-gradient-to-b from-neutral-bg to-neutral-surface">
-        <div className="container py-24">
+      <section className="relative border-b border-neutral-border bg-gradient-to-b from-neutral-bg via-success/[0.02] to-neutral-surface overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(34,197,94,0.05),transparent_50%)]"></div>
+        <div className="container py-24 relative">
           <div className="mx-auto max-w-5xl">
             <div className="grid md:grid-cols-2 gap-12 items-center">
-              <div className="space-y-8 animate-fade-in-up">
+              <ScrollReveal className="scroll-reveal-left">
+              <div className="space-y-8">
                 <div>
                   <h3 className="text-4xl font-bold text-neutral-ink mb-4">
-                    配信者の成長を
+                    最適な一手を
                     <br />
                     <span className="bg-gradient-to-r from-success to-primary bg-clip-text text-transparent">
-                      加速させる
+                      学んでいく
                     </span>
                   </h3>
                   <p className="text-body text-neutral-sub leading-relaxed">
-                    CastCueを使えば、告知作業にかかる時間をゼロにし、
-                    視聴者数の増加を数値で確認できます。
+                    どの文面が強いのか。どの時間帯が伸びやすいのか。<br />
+                    配信前のマーケティング効果をデータで見える化し、次の一手が見えてきます。
                   </p>
                 </div>
 
@@ -260,8 +354,10 @@ export default function Home() {
                   </Link>
                 </div>
               </div>
+              </ScrollReveal>
 
-              <div className="relative animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+              <ScrollReveal className="scroll-reveal-right" delay={200}>
+              <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-success/20 rounded-2xl blur-3xl"></div>
                 <Card className="border-neutral-border shadow-2xl relative backdrop-blur-sm bg-neutral-surface/80">
                   <CardContent className="p-8 space-y-6">
@@ -305,35 +401,94 @@ export default function Home() {
                   </CardContent>
                 </Card>
               </div>
+              </ScrollReveal>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Use Cases Section - 3パターン */}
+      <section className="relative border-b border-neutral-border bg-gradient-to-b from-neutral-surface to-neutral-bg overflow-hidden">
+        <div className="absolute inset-0 bg-grid-pattern opacity-[0.015]"></div>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-gradient-to-r from-primary/5 via-transparent to-success/5 rounded-full blur-3xl"></div>
+        <div className="container py-24 relative">
+          <div className="mx-auto max-w-6xl">
+            <ScrollReveal>
+            <div className="text-center mb-16">
+              <h3 className="text-5xl font-bold text-neutral-ink mb-6">
+                配信者によって
+                <br />
+                <span className="bg-gradient-to-r from-primary to-success bg-clip-text text-transparent">
+                  使い方はそれぞれ
+                </span>
+              </h3>
+              <p className="text-lg text-neutral-sub max-w-2xl mx-auto">
+                自動化しつつも、あなたのペースで運用できます。
+              </p>
+            </div>
+            </ScrollReveal>
+
+            <div className="grid gap-6 md:grid-cols-3">
+              {useCases.map((useCase, index) => (
+                <ScrollReveal delay={index * 100} key={index}>
+                <Card
+                  className="border-neutral-border hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500 hover:-translate-y-2 group"
+                >
+                  <CardContent className="p-6 space-y-4">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-gradient-to-br from-primary/10 to-primary/5 group-hover:from-primary/20 group-hover:to-primary/10 transition-all duration-300">
+                      <useCase.icon className="h-7 w-7 text-primary" strokeWidth={1.75} />
+                    </div>
+                    <div>
+                      <h4 className="text-h3 font-bold text-neutral-ink group-hover:text-primary transition-colors mb-2">
+                        {useCase.title}
+                      </h4>
+                      <p className="text-sm text-neutral-sub italic mb-3">
+                        {useCase.subtitle}
+                      </p>
+                    </div>
+                    <p className="text-small text-neutral-sub leading-relaxed">
+                      {useCase.description}
+                    </p>
+                    <div className="pt-3 border-t border-neutral-border">
+                      <p className="text-sm font-semibold text-primary">
+                        → {useCase.result}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+                </ScrollReveal>
+              ))}
             </div>
           </div>
         </div>
       </section>
 
       {/* How It Works */}
-      <section className="border-b border-neutral-border bg-neutral-surface">
-        <div className="container py-24">
+      <section className="relative border-b border-neutral-border bg-gradient-to-b from-neutral-bg to-neutral-surface overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,rgba(59,130,246,0.05),transparent_50%)]"></div>
+        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-gradient-to-tr from-primary/8 to-transparent rounded-full blur-3xl"></div>
+        <div className="container py-24 relative">
           <div className="mx-auto max-w-4xl">
-            <div className="text-center mb-16 animate-fade-in-up">
+            <ScrollReveal>
+            <div className="text-center mb-16">
               <h3 className="text-5xl font-bold text-neutral-ink mb-6">
                 <span className="bg-gradient-to-r from-primary to-success bg-clip-text text-transparent">
-                  たった4ステップ
+                  配信の裏側で
                 </span>
-                で
                 <br />
-                すぐに始められます
+                自動で動く
               </h3>
               <p className="text-lg text-neutral-sub max-w-2xl mx-auto">
-                セットアップは10分以内。難しい設定は一切不要です。
+                配信開始を検知して、通知・投稿・測定まで。配信前のマーケティングも、すべて自動化されています。
               </p>
             </div>
+            </ScrollReveal>
 
             <div className="space-y-6">
               {steps.map((item, index) => (
+                <ScrollReveal delay={index * 100} key={index}>
                 <div
-                  key={index}
-                  className="flex gap-6 p-6 rounded-xl border border-neutral-border bg-neutral-surface hover:border-primary/50 hover:shadow-xl transition-all duration-300 group animate-fade-in-up"
-                  style={{ animationDelay: `${index * 100}ms` }}
+                  className="flex gap-6 p-6 rounded-xl border border-neutral-border bg-neutral-surface hover:border-primary/50 hover:shadow-xl transition-all duration-300 group"
                 >
                   <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-hover text-xl font-bold text-white shadow-lg shadow-primary/25 group-hover:scale-110 transition-transform duration-300">
                     {item.step}
@@ -347,10 +502,12 @@ export default function Home() {
                     </p>
                   </div>
                 </div>
+                </ScrollReveal>
               ))}
             </div>
 
-            <div className="mt-12 text-center animate-fade-in-up" style={{ animationDelay: '400ms' }}>
+            <ScrollReveal delay={400}>
+            <div className="mt-12 text-center">
               <Link href="/login">
                 <Button size="lg" className="hover-lift shadow-xl shadow-primary/20">
                   セットアップを始める
@@ -358,25 +515,116 @@ export default function Home() {
                 </Button>
               </Link>
             </div>
+            </ScrollReveal>
+          </div>
+        </div>
+      </section>
+
+      {/* Social Proof Section */}
+      <section className="relative border-b border-neutral-border bg-gradient-to-br from-neutral-surface via-success/[0.02] to-neutral-bg overflow-hidden">
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-bl from-success/8 to-transparent rounded-full blur-3xl"></div>
+        <div className="container py-24 relative">
+          <div className="mx-auto max-w-6xl">
+            <ScrollReveal>
+            <div className="text-center mb-16">
+              <h3 className="text-5xl font-bold text-neutral-ink mb-6">
+                配信に
+                <br />
+                <span className="bg-gradient-to-r from-primary to-success bg-clip-text text-transparent">
+                  没頭できるようになった
+                </span>
+              </h3>
+              <p className="text-lg text-neutral-sub max-w-2xl mx-auto">
+                告知の不安から解放された配信者たち。
+              </p>
+            </div>
+            </ScrollReveal>
+
+            <div className="grid gap-6 md:grid-cols-3">
+              {testimonials.map((testimonial, index) => (
+                <ScrollReveal delay={index * 100} key={index}>
+                <Card
+                  className="border-neutral-border hover:shadow-xl transition-all duration-300"
+                >
+                  <CardContent className="p-6 space-y-4">
+                    <p className="text-body text-neutral-ink leading-relaxed italic">
+                      「{testimonial.quote}」
+                    </p>
+                    <div className="pt-3 border-t border-neutral-border">
+                      <p className="text-small text-neutral-sub font-medium">
+                        — {testimonial.author}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+                </ScrollReveal>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ Section */}
+      <section className="relative border-b border-neutral-border bg-gradient-to-b from-neutral-bg via-primary/[0.015] to-neutral-surface overflow-hidden">
+        <div className="absolute inset-0 bg-grid-pattern opacity-[0.01]"></div>
+        <div className="container py-24 relative">
+          <div className="mx-auto max-w-4xl">
+            <ScrollReveal>
+            <div className="text-center mb-16">
+              <h3 className="text-5xl font-bold text-neutral-ink mb-6">
+                よくある質問
+              </h3>
+              <p className="text-lg text-neutral-sub max-w-2xl mx-auto">
+                CastCueについてよく寄せられる質問にお答えします。
+              </p>
+            </div>
+            </ScrollReveal>
+
+            <div className="space-y-6">
+              {faqs.map((faq, index) => (
+                <ScrollReveal delay={index * 50} key={index}>
+                <Card
+                  className="border-neutral-border hover:border-primary/30 transition-all duration-300"
+                >
+                  <CardContent className="p-6 space-y-3">
+                    <h4 className="text-lg font-bold text-neutral-ink">
+                      Q: {faq.question}
+                    </h4>
+                    <p className="text-body text-neutral-sub leading-relaxed">
+                      A: {faq.answer}
+                    </p>
+                  </CardContent>
+                </Card>
+                </ScrollReveal>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
       {/* Pricing Hint */}
-      <section className="border-b border-neutral-border bg-gradient-to-b from-neutral-bg to-neutral-surface">
-        <div className="container py-24">
+      <section className="relative border-b border-neutral-border bg-gradient-to-b from-neutral-surface to-neutral-bg overflow-hidden">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-gradient-to-b from-primary/5 to-transparent rounded-full blur-3xl"></div>
+        <div className="container py-24 relative">
           <div className="mx-auto max-w-5xl">
-            <Card className="border-2 border-primary/20 shadow-2xl shadow-primary/10 overflow-hidden relative animate-fade-in-up">
+            <ScrollReveal className="scroll-reveal-scale">
+            <Card className="border-2 border-primary/20 shadow-2xl shadow-primary/10 overflow-hidden relative">
               <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-primary/20 to-transparent rounded-full blur-3xl"></div>
               <CardContent className="p-12 relative">
                 <div className="grid md:grid-cols-2 gap-12 items-center">
                   <div className="space-y-6">
                     <div>
                       <h3 className="text-5xl font-bold bg-gradient-to-r from-neutral-ink to-primary bg-clip-text text-transparent mb-4">
-                        招待制ベータ
+                        まずはベータ版で
                       </h3>
-                      <p className="text-body text-neutral-sub leading-relaxed">
-                        現在は招待制ベータ版として<span className="text-primary font-semibold">完全無料</span>でご利用いただけます。
+                      <p className="text-body text-neutral-sub leading-relaxed mb-2">
+                        現在はクローズドβ版として、招待制で運営しています。
+                      </p>
+                      <p className="text-body text-neutral-sub leading-relaxed mb-2">
+                        配信者のみなさんと一緒に育てていくフェーズです。
+                      </p>
+                      <p className="text-body text-primary font-semibold leading-relaxed">
+                        登録すれば、すぐにお使いいただけます。
                       </p>
                     </div>
 
@@ -411,7 +659,7 @@ export default function Home() {
 
                     <Link href="/login" className="block">
                       <Button size="lg" className="w-full hover-lift shadow-xl shadow-primary/20 text-base py-6">
-                        今すぐ始める
+                        無料で始める
                         <ArrowRight className="ml-2 h-5 w-5" />
                       </Button>
                     </Link>
@@ -423,6 +671,7 @@ export default function Home() {
                 </div>
               </CardContent>
             </Card>
+            </ScrollReveal>
           </div>
         </div>
       </section>
@@ -433,16 +682,18 @@ export default function Home() {
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-primary/20 rounded-full blur-[120px]"></div>
 
         <div className="container py-32 relative">
-          <div className="mx-auto max-w-4xl text-center space-y-8 animate-fade-in-up">
+          <ScrollReveal>
+          <div className="mx-auto max-w-4xl text-center space-y-8">
             <h3 className="text-6xl font-bold bg-gradient-to-r from-neutral-ink via-primary to-success bg-clip-text text-transparent">
-              配信の成長を、
+              告知忘れの機会損失を
               <br />
-              今日から加速させよう
+              ゼロにしよう
             </h3>
             <p className="text-xl text-neutral-sub max-w-2xl mx-auto leading-relaxed">
-              招待制ベータ版として、配信者の方々と一緒に開発を進めています。
-              <br />
-              あなたも今すぐ無料で始めませんか？
+              告知を忘れることも、手間をかけることもない。<br />
+              配信前のマーケティングを自動化しつつも、あなたのペースで運用できます。
+              <br /><br />
+              登録は無料、設定は3分で完了します。
             </p>
 
             <div className="flex flex-col sm:flex-row justify-center gap-4 pt-4">
@@ -451,7 +702,7 @@ export default function Home() {
                   size="lg"
                   className="w-full sm:w-auto text-base px-10 py-7 shadow-2xl shadow-primary/30 hover-lift bg-gradient-to-r from-primary to-primary-hover"
                 >
-                  無料で始める
+                  今すぐ始める
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
@@ -472,6 +723,7 @@ export default function Home() {
               </div>
             </div>
           </div>
+          </ScrollReveal>
         </div>
       </section>
 
@@ -486,7 +738,10 @@ export default function Home() {
                 </h1>
               </Link>
               <p className="text-small text-neutral-sub">
-                配信者のための完全自動化ツール
+                配信前のマーケティングを自動化
+              </p>
+              <p className="text-xs text-neutral-sub italic">
+                Your live, on cue.
               </p>
             </div>
 
@@ -505,7 +760,6 @@ export default function Home() {
               <ul className="space-y-2 text-sm text-neutral-sub">
                 <li><Link href="/about" className="hover:text-primary transition-colors">About</Link></li>
                 <li><Link href="/blog" className="hover:text-primary transition-colors">ブログ</Link></li>
-                <li><Link href="/careers" className="hover:text-primary transition-colors">採用</Link></li>
                 <li><Link href="/contact" className="hover:text-primary transition-colors">お問い合わせ</Link></li>
               </ul>
             </div>

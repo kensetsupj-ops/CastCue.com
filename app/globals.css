@@ -37,11 +37,39 @@
     --muted-foreground: #64748B;
   }
 
-  /* Dark mode (future) */
+  /* Dark mode */
   .dark {
-    --background: #0F172A;
-    --foreground: #E5E7EB;
-    /* ... other dark mode tokens */
+    /* Brand Colors */
+    --primary: #6366F1;
+    --primary-hover: #4F46E5;
+    --primary-foreground: #FFFFFF;
+    --secondary: #10B981;
+    --secondary-foreground: #FFFFFF;
+
+    /* Neutral Colors */
+    --neutral-ink: #F9FAFB;
+    --neutral-sub: #9CA3AF;
+    --neutral-border: #374151;
+    --neutral-bg: #111827;
+    --neutral-surface: #1F2937;
+
+    /* Semantic Colors */
+    --success: #10B981;
+    --warning: #F59E0B;
+    --danger: #EF4444;
+    --info: #3B82F6;
+
+    /* State Colors */
+    --disabled-text: #6B7280;
+    --disabled-bg: #374151;
+    --focus-ring: #818CF8;
+
+    /* Alias */
+    --background: #111827;
+    --foreground: #F9FAFB;
+    --border: #374151;
+    --muted: #1F2937;
+    --muted-foreground: #9CA3AF;
   }
 }
 
@@ -130,5 +158,53 @@
 
   .text-gradient-success {
     @apply bg-gradient-to-r from-success to-primary bg-clip-text text-transparent;
+  }
+
+  /* Scroll reveal animations */
+  .scroll-reveal {
+    opacity: 0;
+    transform: translateY(40px);
+    transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .scroll-reveal-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Scroll reveal with slide from left */
+  .scroll-reveal-left {
+    opacity: 0;
+    transform: translateX(-60px);
+    transition: opacity 0.9s cubic-bezier(0.4, 0, 0.2, 1), transform 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .scroll-reveal-left.scroll-reveal-visible {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  /* Scroll reveal with slide from right */
+  .scroll-reveal-right {
+    opacity: 0;
+    transform: translateX(60px);
+    transition: opacity 0.9s cubic-bezier(0.4, 0, 0.2, 1), transform 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .scroll-reveal-right.scroll-reveal-visible {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  /* Scroll reveal with scale */
+  .scroll-reveal-scale {
+    opacity: 0;
+    transform: scale(0.9);
+    transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .scroll-reveal-scale.scroll-reveal-visible {
+    opacity: 1;
+    transform: scale(1);
   }
 }

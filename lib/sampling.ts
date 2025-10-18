@@ -45,6 +45,7 @@ export async function sampleViewerCount(streamId: number): Promise<{
       .insert({
         stream_id: streamId,
         viewer_count: viewerCount,
+        taken_at: new Date().toISOString(),
       })
       .select("id")
       .single();
@@ -84,7 +85,7 @@ export async function startSampling(streamId: number): Promise<void> {
 
   // For MVP, we'll just take an initial sample
   // In production, you'd want to:
-  // 1. Schedule periodic samples (e.g., every 5 minutes for the first hour, then every 15 minutes)
+  // 1. Schedule periodic samples (every 10 minutes)
   // 2. Use a job queue or cron system to run the samples
   // 3. Continue sampling until the stream ends
 
@@ -93,8 +94,8 @@ export async function startSampling(streamId: number): Promise<void> {
   // Note: In production, you would use a job queue like BullMQ, Inngest, or similar
   // to schedule periodic sampling. For example:
   // - Sample immediately
-  // - Sample at 5, 10, 15, 30, 60 minutes after post
-  // - Continue sampling every 15-30 minutes until stream ends
+  // - Sample at 10, 20, 30, 40, 50, 60 minutes after post
+  // - Continue sampling every 10 minutes until stream ends
 }
 
 /**

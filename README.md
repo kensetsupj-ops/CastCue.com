@@ -12,7 +12,9 @@ CastCue は、Twitch 配信の開始を自動検知し、X (Twitter) と Discord
 - **リフト可視化**: 告知前後の同接変化を計測・表示
 - **短縮 URL**: クリック計測用の短縮 URL を自動生成
 - **Web Push 通知**: 配信開始時にブラウザ通知（レビュー承認モード）
-- **A/B テスト**: テンプレートの効果を比較
+- **テンプレート比較**: 複数のテンプレートの効果を比較・分析
+  - プレースホルダー機能: `{配信タイトル}` で動的な内容を挿入
+  - リアルタイムプレビュー: 実際の投稿イメージを確認しながら編集
 
 ## 技術スタック
 
@@ -29,7 +31,7 @@ CastCue は、Twitch 配信の開始を自動検知し、X (Twitter) と Discord
 ### 前提条件
 
 - Node.js 18+ または 20+
-- pnpm 8+
+- npm 10+
 - Supabase アカウント
 - Twitch Developer アカウント
 - X Developer アカウント
@@ -39,7 +41,7 @@ CastCue は、Twitch 配信の開始を自動検知し、X (Twitter) と Discord
 \`\`\`bash
 git clone <repository-url>
 cd CastCue
-pnpm install
+npm install
 \`\`\`
 
 ### 2. 環境変数の設定
@@ -57,6 +59,21 @@ cp .env.example .env.local
 - **X (Twitter)**: \`X_CLIENT_ID\`, \`X_CLIENT_SECRET\`, \`X_REDIRECT_URI\`
 - **Web Push**: \`VAPID_PUBLIC_KEY\`, \`VAPID_PRIVATE_KEY\`, \`VAPID_SUBJECT\`
 - **暗号化**: \`DATA_ENCRYPTION_KEY\`
+- **Cron認証**: \`CRON_SECRET\` ⚠️ 本番環境では必須
+
+⚠️ **本番運用前に必須対応**:
+
+1. **Upstash Redis (レート制限)**
+   - 現在のレート制限はインメモリ実装のため、Vercel環境では**効果がありません**
+   - 本番運用前にUpstash Redisへの移行が必須です
+   - 詳細: \`docs/deployment/upstash-setup.md\`
+   - 所要時間: 15分 / コスト: 無料（10,000 commands/day）
+
+2. **Cron Jobの設定**
+   - \`CRON_SECRET\`を安全なランダム値で生成してください
+   - 生成コマンド: \`node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"\`
+
+詳細な本番デプロイ手順: \`QUICKSTART.md\` または \`docs/deployment/vercel-deployment.md\`
 
 ### 3. VAPID キーの生成
 
@@ -79,9 +96,9 @@ node -e "console.log('base64:' + require('crypto').randomBytes(32).toString('bas
 #### ローカル開発の場合
 
 \`\`\`bash
-pnpm dlx supabase init
-pnpm dlx supabase start
-pnpm dlx supabase db push
+npx supabase init
+npx supabase start
+npx supabase db push
 \`\`\`
 
 #### Supabase Cloud の場合
@@ -93,7 +110,7 @@ pnpm dlx supabase db push
 ### 6. 開発サーバーの起動
 
 \`\`\`bash
-pnpm dev
+npm run dev
 \`\`\`
 
 ブラウザで [http://localhost:3000](http://localhost:3000) を開きます。

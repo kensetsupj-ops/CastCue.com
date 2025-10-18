@@ -87,8 +87,13 @@ export async function exchangeCodeForToken(
   });
 
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Failed to exchange code for token: ${error}`);
+    // SECURITY: Sanitize error - don't expose X API error details
+    const statusCode = response.status;
+    console.error("[X OAuth] Token exchange failed:", {
+      status: statusCode,
+      statusText: response.statusText,
+    });
+    throw new Error(`Failed to exchange OAuth code (HTTP ${statusCode})`);
   }
 
   const data = await response.json();
@@ -129,8 +134,13 @@ export async function refreshAccessToken(
   });
 
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Failed to refresh token: ${error}`);
+    // SECURITY: Sanitize error - don't expose X API error details or tokens
+    const statusCode = response.status;
+    console.error("[X OAuth] Token refresh failed:", {
+      status: statusCode,
+      statusText: response.statusText,
+    });
+    throw new Error(`Failed to refresh OAuth token (HTTP ${statusCode})`);
   }
 
   const data = await response.json();
@@ -143,9 +153,22 @@ export async function refreshAccessToken(
 }
 
 /**
+ * SECURITY: Token refresh lock to prevent race conditions
+ * Stores in-progress refresh operations per user
+ */
+const tokenRefreshLocks = new Map<string, Promise<string>>();
+
+/**
  * Get user's access token (decrypt from database)
+ * SECURITY: Implements lock mechanism to prevent concurrent token refreshes
  */
 export async function getUserAccessToken(userId: string): Promise<string> {
+  // SECURITY: Check if token refresh is already in progress
+  if (tokenRefreshLocks.has(userId)) {
+    console.log(`[X OAuth] Waiting for existing token refresh for user ${userId}`);
+    return await tokenRefreshLocks.get(userId)!;
+  }
+
   const { data, error } = await supabaseAdmin
     .from("x_connections")
     .select("*")
@@ -158,23 +181,45 @@ export async function getUserAccessToken(userId: string): Promise<string> {
 
   // Check if token is expired
   if (data.expires_at && new Date(data.expires_at) < new Date()) {
-    // Refresh token
-    const decryptedRefreshToken = decrypt(data.refresh_token_cipher!);
-    const tokens = await refreshAccessToken(decryptedRefreshToken);
+    // SECURITY: Create refresh lock before starting refresh
+    const refreshPromise = (async () => {
+      try {
+        console.log(`[X OAuth] Starting token refresh for user ${userId}`);
 
-    // Update database
-    await supabaseAdmin
-      .from("x_connections")
-      .update({
-        access_token_cipher: encrypt(tokens.access_token),
-        refresh_token_cipher: encrypt(tokens.refresh_token),
-        expires_at: new Date(
-          Date.now() + tokens.expires_in * 1000
-        ).toISOString(),
-      })
-      .eq("user_id", userId);
+        // Refresh token
+        const decryptedRefreshToken = decrypt(data.refresh_token_cipher!);
+        const tokens = await refreshAccessToken(decryptedRefreshToken);
 
-    return tokens.access_token;
+        // Update database
+        await supabaseAdmin
+          .from("x_connections")
+          .update({
+            access_token_cipher: encrypt(tokens.access_token),
+            refresh_token_cipher: encrypt(tokens.refresh_token),
+            expires_at: new Date(
+              Date.now() + tokens.expires_in * 1000
+            ).toISOString(),
+          })
+          .eq("user_id", userId);
+
+        console.log(`[X OAuth] Token refresh successful for user ${userId}`);
+        return tokens.access_token;
+      } catch (error) {
+        console.error(`[X OAuth] Token refresh failed for user ${userId}:`, error);
+        throw error;
+      }
+    })();
+
+    // Store the refresh promise
+    tokenRefreshLocks.set(userId, refreshPromise);
+
+    try {
+      const accessToken = await refreshPromise;
+      return accessToken;
+    } finally {
+      // SECURITY: Remove lock after refresh completes (success or failure)
+      tokenRefreshLocks.delete(userId);
+    }
   }
 
   return decrypt(data.access_token_cipher);
@@ -211,8 +256,13 @@ export async function uploadMedia(
   });
 
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Failed to upload media: ${error}`);
+    // SECURITY: Sanitize error - don't expose X API error details
+    const statusCode = response.status;
+    console.error("[X API] Media upload failed:", {
+      status: statusCode,
+      statusText: response.statusText,
+    });
+    throw new Error(`Failed to upload media (HTTP ${statusCode})`);
   }
 
   const data = await response.json();
@@ -251,8 +301,13 @@ export async function postTweet(
   });
 
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Failed to post tweet: ${error}`);
+    // SECURITY: Sanitize error - don't expose X API error details
+    const statusCode = response.status;
+    console.error("[X API] Tweet post failed:", {
+      status: statusCode,
+      statusText: response.statusText,
+    });
+    throw new Error(`Failed to post tweet (HTTP ${statusCode})`);
   }
 
   const data = await response.json();
@@ -276,8 +331,13 @@ export async function getCurrentUser(
   });
 
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Failed to get user info: ${error}`);
+    // SECURITY: Sanitize error - don't expose X API error details
+    const statusCode = response.status;
+    console.error("[X API] Get user info failed:", {
+      status: statusCode,
+      statusText: response.statusText,
+    });
+    throw new Error(`Failed to get user info (HTTP ${statusCode})`);
   }
 
   const data = await response.json();
@@ -325,8 +385,13 @@ export async function getFollowing(
   );
 
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Failed to get following list: ${error}`);
+    // SECURITY: Sanitize error - don't expose X API error details
+    const statusCode = response.status;
+    console.error("[X API] Get following list failed:", {
+      status: statusCode,
+      statusText: response.statusText,
+    });
+    throw new Error(`Failed to get following list (HTTP ${statusCode})`);
   }
 
   const data = await response.json();

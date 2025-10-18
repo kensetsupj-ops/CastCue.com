@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
-import { createClient as createAdmin } from "@supabase/supabase-js";
+import { supabaseAdmin } from "@/lib/db";
 
 /**
  * GET /api/reports
@@ -15,17 +15,6 @@ import { createClient as createAdmin } from "@supabase/supabase-js";
  */
 export async function GET(req: NextRequest) {
   try {
-    // Supabase Admin クライアントを関数内で初期化
-    const supabaseAdmin = createAdmin(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    );
 
     // Supabase認証
     const cookieStore = await cookies();
@@ -59,7 +48,6 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const period = searchParams.get("period") || "today";
     const templateId = searchParams.get("template");
-    const variant = searchParams.get("variant");
     const search = searchParams.get("search");
 
     // 期間の開始時刻を計算
@@ -102,44 +90,128 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // 各deliveryのデータを集計
-    const reportsWithStats = await Promise.all(
-      (deliveries || []).map(async (delivery: any) => {
+    // ユーザーのテンプレート一覧を取得
+    const { data: templates } = await supabaseAdmin
+      .from("templates")
+      .select("id, name")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+
+    // テンプレートIDから名前へのマップを作成
+    const templateNameMap: Record<string, string> = {};
+    (templates || []).forEach((t: any) => {
+      templateNameMap[t.id] = t.name;
+    });
+
+    // N+1クエリ問題を解決：全データを一括取得
+    const streamIds = (deliveries || [])
+      .filter(d => d.stream_id)
+      .map(d => d.stream_id);
+
+    // 1. 全draftsを一括取得
+    // SECURITY: Explicit user_id check to prevent data leakage
+    const { data: allDrafts } = await supabaseAdmin
+      .from("drafts")
+      .select("stream_id, title")
+      .eq("user_id", user.id)  // SECURITY: Explicit ownership verification
+      .in("stream_id", streamIds);
+
+    const draftByStreamId = new Map<number, any>();
+    (allDrafts || []).forEach(draft => {
+      draftByStreamId.set(draft.stream_id, draft);
+    });
+
+    // 2. 全linksを一括取得
+    const campaignIds = streamIds.map(id => `stream-${id}`);
+    const { data: allLinks } = await supabaseAdmin
+      .from("links")
+      .select("id, campaign_id")
+      .eq("user_id", user.id)
+      .in("campaign_id", campaignIds);
+
+    const linksByCampaign = new Map<string, string[]>();
+    const allLinkIds: string[] = [];
+    (allLinks || []).forEach(link => {
+      if (!linksByCampaign.has(link.campaign_id)) {
+        linksByCampaign.set(link.campaign_id, []);
+      }
+      linksByCampaign.get(link.campaign_id)!.push(link.id);
+      allLinkIds.push(link.id);
+    });
+
+    // 3. 全clicksを一括取得
+    const { data: allClicks } = allLinkIds.length > 0
+      ? await supabaseAdmin
+          .from("clicks")
+          .select("link_id")
+          .in("link_id", allLinkIds)
+      : { data: null };
+
+    const clickCountByLink = new Map<string, number>();
+    (allClicks || []).forEach(click => {
+      const count = clickCountByLink.get(click.link_id) || 0;
+      clickCountByLink.set(click.link_id, count + 1);
+    });
+
+    // 4. 全samplesを一括取得
+    // SECURITY: Defense in depth - verify stream ownership before fetching samples
+    // Even though streamIds come from user's deliveries, explicitly verify ownership
+    const { data: userStreams } = streamIds.length > 0
+      ? await supabaseAdmin
+          .from("streams")
+          .select("id")
+          .eq("user_id", user.id)
+          .in("id", streamIds)
+      : { data: null };
+
+    const verifiedStreamIds = (userStreams || []).map(s => s.id);
+
+    const { data: allSamples } = verifiedStreamIds.length > 0
+      ? await supabaseAdmin
+          .from("samples")
+          .select("stream_id, taken_at, viewer_count")
+          .in("stream_id", verifiedStreamIds)  // SECURITY: Only fetch samples for verified streams
+          .order("taken_at", { ascending: true })
+      : { data: null };
+
+    const samplesByStreamId = new Map<number, any[]>();
+    (allSamples || []).forEach(sample => {
+      if (!samplesByStreamId.has(sample.stream_id)) {
+        samplesByStreamId.set(sample.stream_id, []);
+      }
+      samplesByStreamId.get(sample.stream_id)!.push(sample);
+    });
+
+    // 各deliveryのデータを集計（全てメモリ上で処理）
+    const reportsWithStats = (deliveries || []).map((delivery: any) => {
         const stream = delivery.streams;
 
         if (!stream) {
           return null;
         }
 
-        // クリック数を取得
-        const { data: links } = await supabaseAdmin
-          .from("links")
-          .select("id")
-          .eq("user_id", user.id)
-          .eq("campaign_id", `stream-${delivery.stream_id}`);
+        // テンプレート名を取得
+        const templateName = delivery.template_id && templateNameMap[delivery.template_id]
+          ? templateNameMap[delivery.template_id]
+          : "テンプレート";
 
+        // 配信タイトルを取得（draftsマップから）
+        const draft = draftByStreamId.get(delivery.stream_id);
+        const streamTitle = draft?.title || "配信";
+
+        // クリック数を計算
+        const campaignId = `stream-${delivery.stream_id}`;
+        const linkIds = linksByCampaign.get(campaignId) || [];
         let clicks = 0;
-        if (links && links.length > 0) {
-          for (const link of links) {
-            const { count } = await supabaseAdmin
-              .from("clicks")
-              .select("*", { count: "exact", head: true })
-              .eq("link_id", link.id);
+        linkIds.forEach(linkId => {
+          clicks += clickCountByLink.get(linkId) || 0;
+        });
 
-            clicks += count || 0;
-          }
-        }
-
-        // リフト効果を計算（samplesから）
-        const { data: samples } = await supabaseAdmin
-          .from("samples")
-          .select("*")
-          .eq("stream_id", delivery.stream_id)
-          .order("taken_at", { ascending: true });
-
+        // リフト効果を計算（samplesマップから）
+        const samples = samplesByStreamId.get(delivery.stream_id) || [];
         let lift = 0;
 
-        if (samples && samples.length > 0) {
+        if (samples.length > 0) {
           const postTime = new Date(delivery.created_at);
 
           // 投稿前5分のサンプル
@@ -167,8 +239,9 @@ export async function GET(req: NextRequest) {
           }
         }
 
-        // 視聴率（conversion rate）= lift / clicks
-        const conversion = clicks > 0 ? lift / clicks : 0;
+        // クリック経由率（％）= (called_viewers / clicks) × 100
+        // クリックした人のうち何%が実際に配信を見に来たか
+        const conversion = clicks > 0 ? Math.round((lift / clicks) * 1000) / 10 : 0;
 
         // 日時をフォーマット
         const createdAt = new Date(delivery.created_at);
@@ -185,27 +258,22 @@ export async function GET(req: NextRequest) {
           id: delivery.id,
           datetime: formatDateTime(createdAt),
           streamId: delivery.stream_id,
-          streamTitle: "配信", // TODO: Get actual stream title from drafts table
-          template: "テンプレート", // TODO: Get template name
-          variant: "A", // TODO: Get variant from template
+          streamTitle: streamTitle, // 実際の配信タイトル
+          template: templateName,
+          templateId: delivery.template_id || null,
           clicks,
-          lift,
+          called_viewers: lift,
           conversion,
           status: "送信済み",
-          body: "投稿内容", // TODO: Store post body in deliveries table
+          body: `配信開始！${streamTitle}`, // 投稿内容（body_textカラムがないため生成）
         };
-      })
-    );
+      });
 
     // nullを除外
     const reports = reportsWithStats.filter((r) => r !== null);
 
     // フィルター適用
     let filteredReports = reports;
-
-    if (variant) {
-      filteredReports = filteredReports.filter((r) => r.variant === variant);
-    }
 
     if (search) {
       const lowerSearch = search.toLowerCase();
@@ -219,40 +287,77 @@ export async function GET(req: NextRequest) {
     // サマリー計算
     const totalReports = filteredReports.length;
     const totalClicks = filteredReports.reduce((sum, r) => sum + r.clicks, 0);
-    const totalLift = filteredReports.reduce((sum, r) => sum + r.lift, 0);
-    const avgConversion = filteredReports.length > 0
-      ? filteredReports.reduce((sum, r) => sum + r.conversion, 0) / filteredReports.length
+    const totalCalledViewers = filteredReports.reduce((sum, r) => sum + r.called_viewers, 0);
+    const avgConversion = totalClicks > 0
+      ? Math.round((totalCalledViewers / totalClicks) * 1000) / 10
       : 0;
 
     // 最も効果的だった投稿
     const bestReport = filteredReports.length > 0
-      ? filteredReports.reduce((best, r) => (r.lift > best.lift ? r : best))
+      ? filteredReports.reduce((best, r) => (r.called_viewers > best.called_viewers ? r : best))
       : null;
 
     // テンプレート別集計
     const templateStats = filteredReports.reduce(
       (acc, r) => {
-        const key = r.variant;
+        const key = r.templateId || 'default'; // templateIdがなければdefaultで代用
         if (!acc[key]) {
-          acc[key] = { count: 0, totalLift: 0, totalClicks: 0 };
+          acc[key] = {
+            name: r.template || 'デフォルトテンプレート',
+            count: 0,
+            totalCalledViewers: 0,
+            totalClicks: 0,
+            totalConversion: 0,
+            bestRecord: { calledViewers: 0, date: "" }
+          };
         }
         acc[key].count++;
-        acc[key].totalLift += r.lift;
+        acc[key].totalCalledViewers += r.called_viewers;
         acc[key].totalClicks += r.clicks;
+        acc[key].totalConversion += r.conversion;
+
+        // 最高記録を更新
+        if (r.called_viewers > acc[key].bestRecord.calledViewers) {
+          acc[key].bestRecord = {
+            calledViewers: r.called_viewers,
+            date: r.datetime
+          };
+        }
+
         return acc;
       },
-      {} as Record<string, { count: number; totalLift: number; totalClicks: number }>
+      {} as Record<string, {
+        name: string;
+        count: number;
+        totalCalledViewers: number;
+        totalClicks: number;
+        totalConversion: number;
+        bestRecord: { calledViewers: number; date: string };
+      }>
     );
+
+    // テンプレート統計を整形（平均値を計算）
+    const templateComparison = Object.entries(templateStats).map(([id, stats]) => ({
+      id,
+      name: stats.name,
+      count: stats.count,
+      avgCalledViewers: stats.count > 0 ? Math.round(stats.totalCalledViewers / stats.count) : 0,
+      avgClicks: stats.count > 0 ? Math.round(stats.totalClicks / stats.count) : 0,
+      avgConversion: stats.totalClicks > 0 ? Math.round((stats.totalCalledViewers / stats.totalClicks) * 1000) / 10 : 0,
+      bestRecord: stats.bestRecord
+    }));
+
 
     return NextResponse.json({
       summary: {
         totalReports,
         totalClicks,
-        totalLift,
+        totalCalledViewers,
         avgConversion,
       },
       bestReport,
       templateStats,
+      templateComparison,
       reports: filteredReports,
     });
   } catch (error: any) {
