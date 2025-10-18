@@ -136,12 +136,32 @@ CRON_SECRET=xxxxx
 
 ---
 
-## 🔧 Cron Jobs確認
+## 🔧 Cron Jobs設定
+
+### Vercel Cron Job（月次クォータリセット）
 
 1. Vercel Dashboard → Settings → Cron Jobs
 2. 以下が表示されているか確認：
-   - `/api/cron/sampling` - 5分ごと
-   - `/api/cron/reset-quotas` - 毎月1日
+   - `/api/cron/reset-quotas` - 毎月1日 00:00
+
+### GitHub Actions（サンプリング - Hobby plan対応）
+
+**重要**: Vercel Hobby planでは5分ごとのcronが使えないため、GitHub Actionsを使用します。
+
+1. GitHubリポジトリ → **Settings** → **Secrets and variables** → **Actions**
+2. **New repository secret** をクリック
+3. 以下の2つのシークレットを追加：
+
+   **APP_URL**:
+   - Name: `APP_URL`
+   - Secret: `https://your-actual-url.vercel.app`（あなたのデプロイURLに置き換え）
+
+   **CRON_SECRET**:
+   - Name: `CRON_SECRET`
+   - Secret: `xxxxx`（Vercel環境変数と同じCRON_SECRETの値）
+
+4. **Actions** タブで "Sampling Cron Job" ワークフローが有効か確認
+5. 手動実行テスト: **Actions** → "Sampling Cron Job" → **Run workflow**
 
 ---
 

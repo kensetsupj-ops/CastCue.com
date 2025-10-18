@@ -119,10 +119,28 @@ npm run dev
 
 ### Vercel へのデプロイ
 
+詳細な手順は \`QUICKSTART.md\` を参照してください。
+
+**簡易手順**:
 1. GitHub リポジトリに push
 2. [Vercel](https://vercel.com) で新規プロジェクトをインポート
 3. 環境変数を設定
 4. デプロイ
+
+### Cron Jobs の設定
+
+#### Vercel Cron（月次クォータリセット）
+- \`vercel.json\` に定義済み: 毎月1日 00:00 にクォータリセット
+
+#### GitHub Actions（サンプリング - Hobby plan対応）
+**重要**: Vercel Hobby planでは5分ごとのcronが使えません。
+
+1. GitHubリポジトリ → Settings → Secrets and variables → Actions
+2. 以下のシークレットを追加：
+   - \`APP_URL\`: デプロイURL（例: \`https://castcue.vercel.app\`）
+   - \`CRON_SECRET\`: Vercel環境変数と同じ値
+
+詳細: \`QUICKSTART.md\` の「🔧 Cron Jobs設定」セクション
 
 ### Webhook の設定
 

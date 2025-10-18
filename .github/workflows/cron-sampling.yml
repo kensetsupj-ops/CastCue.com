@@ -1,0 +1,25 @@
+name: Sampling Cron Job
+
+on:
+  schedule:
+    # 5分ごとに実行（Vercel Hobby planの制限を回避）
+    - cron: '*/5 * * * *'
+  workflow_dispatch: # 手動実行も可能
+
+jobs:
+  sampling:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call sampling endpoint
+        run: |
+          curl -X POST ${{ secrets.APP_URL }}/api/cron/sampling \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --fail-with-body \
+            --show-error \
+            --silent
+        continue-on-error: true
+
+      - name: Log completion
+        if: always()
+        run: echo "Sampling cron job completed at $(date)"
