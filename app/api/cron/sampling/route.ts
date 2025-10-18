@@ -3,16 +3,25 @@ import { supabaseAdmin } from "@/lib/db";
 import { sampleViewerCount } from "@/lib/sampling";
 
 /**
- * Vercel Cron Job - Sample viewer counts for active streams
+ * Cron Job - Sample viewer counts for active streams
  *
- * This endpoint is called every 5 minutes by Vercel Cron to sample
- * viewer counts for all active streams.
+ * This endpoint is called every 5 minutes by GitHub Actions (or Vercel Cron)
+ * to sample viewer counts for all active streams.
  *
- * GET /api/cron/sampling
+ * POST /api/cron/sampling (GitHub Actions)
+ * GET /api/cron/sampling (Vercel Cron - legacy)
  *
  * Security: Requires CRON_SECRET header to prevent unauthorized access
  */
+export async function POST(req: NextRequest) {
+  return handleSampling(req);
+}
+
 export async function GET(req: NextRequest) {
+  return handleSampling(req);
+}
+
+async function handleSampling(req: NextRequest) {
   try {
     // Verify cron secret for security
     const authHeader = req.headers.get("authorization");
