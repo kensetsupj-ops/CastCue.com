@@ -15,6 +15,7 @@ jobs:
           curl -X POST ${{ secrets.APP_URL }}/api/cron/sampling \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -H "Content-Type: application/json" \
+            -H "Origin: ${{ secrets.APP_URL }}" \
             --fail-with-body \
             --show-error \
             --silent

@@ -11,4 +11,15 @@ jobs:
     steps:
       - name: Call reset quotas API
         run: |
-          curl -X POST ${{ secrets.APP_URL }}/api/cron/reset-quotas
+          curl -X GET ${{ secrets.APP_URL }}/api/cron/reset-quotas \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -H "Origin: ${{ secrets.APP_URL }}" \
+            --fail-with-body \
+            --show-error \
+            --silent
+        continue-on-error: true
+
+      - name: Log completion
+        if: always()
+        run: echo "Quota reset cron job completed at $(date)"
