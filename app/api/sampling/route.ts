@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
       }
 
       // SECURITY: Rate limiting for authenticated users - 10 requests per minute
-      const rateLimitError = checkRateLimit(req, user.id, {
+      const rateLimitError = await checkRateLimit(req, user.id, {
         windowMs: 60 * 1000, // 1 minute
         maxRequests: 10, // 10 requests per minute
       });
@@ -121,7 +121,7 @@ export async function GET(req: NextRequest) {
       }
 
       // SECURITY: Rate limiting for authenticated users - 10 requests per minute
-      const rateLimitError = checkRateLimit(req, user.id, {
+      const rateLimitError = await checkRateLimit(req, user.id, {
         windowMs: 60 * 1000, // 1 minute
         maxRequests: 10, // 10 requests per minute
       });

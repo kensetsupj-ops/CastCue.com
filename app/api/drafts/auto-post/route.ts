@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     }
 
     // SECURITY: Rate limiting - 5 posts per minute to prevent abuse
-    const rateLimitError = checkRateLimit(req, user.id, {
+    const rateLimitError = await checkRateLimit(req, user.id, {
       windowMs: 60 * 1000, // 1 minute
       maxRequests: 5, // 5 requests per minute
     });

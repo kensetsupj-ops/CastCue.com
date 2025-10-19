@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
     const user_id = user.id;
 
     // Rate limiting
-    const rateLimitError = checkRateLimit(req, user_id);
+    const rateLimitError = await checkRateLimit(req, user_id);
     if (rateLimitError) {
       return rateLimitError;
     }
@@ -170,7 +170,7 @@ export async function DELETE(req: NextRequest) {
     const user_id = user.id;
 
     // Rate limiting
-    const rateLimitError = checkRateLimit(req, user_id);
+    const rateLimitError = await checkRateLimit(req, user_id);
     if (rateLimitError) {
       return rateLimitError;
     }

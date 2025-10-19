@@ -88,7 +88,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Rate limiting check
-    const rateLimitResponse = checkRateLimit(req, user.id, ADMIN_RATE_LIMIT);
+    const rateLimitResponse = await checkRateLimit(req, user.id, ADMIN_RATE_LIMIT);
     if (rateLimitResponse) {
       return rateLimitResponse;
     }
