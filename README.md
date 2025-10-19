@@ -31,7 +31,7 @@ CastCue は、Twitch 配信の開始を自動検知し、X (Twitter) と Discord
 ### 前提条件
 
 - Node.js 18+ または 20+
-- npm 10+
+- pnpm 9+ または 10+ （推奨）
 - Supabase アカウント
 - Twitch Developer アカウント
 - X Developer アカウント
@@ -41,8 +41,10 @@ CastCue は、Twitch 配信の開始を自動検知し、X (Twitter) と Discord
 \`\`\`bash
 git clone <repository-url>
 cd CastCue
-npm install
+pnpm install
 \`\`\`
+
+> **Note:** pnpmがインストールされていない場合は `npm install -g pnpm` でインストールしてください。
 
 ### 2. 環境変数の設定
 
@@ -110,7 +112,7 @@ npx supabase db push
 ### 6. 開発サーバーの起動
 
 \`\`\`bash
-npm run dev
+pnpm dev
 \`\`\`
 
 ブラウザで [http://localhost:3000](http://localhost:3000) を開きます。
