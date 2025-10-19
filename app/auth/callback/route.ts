@@ -1,10 +1,20 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
+// Force dynamic rendering (uses cookies and request headers)
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url)
+  const { searchParams } = new URL(request.url)
   const code = searchParams.get('code')
   const next = searchParams.get('next') ?? '/dashboard'
+
+  // Get the correct redirect URL from environment
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.APP_ORIGIN
+  if (!siteUrl) {
+    console.error('[auth/callback] NEXT_PUBLIC_SITE_URL not configured')
+    return new NextResponse('Server configuration error', { status: 500 })
+  }
 
   if (code) {
     const supabase = await createClient()
@@ -14,21 +24,18 @@ export async function GET(request: Request) {
       // プロフィール同期を実行
       await syncTwitchProfile(data.user.id, data.session?.provider_token ?? undefined)
 
-      const forwardedHost = request.headers.get('x-forwarded-host')
-      const isLocalEnv = process.env.NODE_ENV === 'development'
-
-      if (isLocalEnv) {
-        return NextResponse.redirect(`${origin}${next}`)
-      } else if (forwardedHost) {
-        return NextResponse.redirect(`https://${forwardedHost}${next}`)
-      } else {
-        return NextResponse.redirect(`${origin}${next}`)
-      }
+      // Always use NEXT_PUBLIC_SITE_URL for redirect
+      const redirectUrl = `${siteUrl}${next}`
+      console.log(`[auth/callback] Redirecting to: ${redirectUrl}`)
+      return NextResponse.redirect(redirectUrl)
     }
+
+    console.error('[auth/callback] Auth error:', error)
   }
 
   // エラーの場合はログインページへ
-  return NextResponse.redirect(`${origin}/login`)
+  console.warn('[auth/callback] No code or auth failed, redirecting to login')
+  return NextResponse.redirect(`${siteUrl}/login`)
 }
 
 async function syncTwitchProfile(userId: string, providerToken?: string) {
