@@ -1,11 +1,6 @@
 {
   "buildCommand": "npm run build",
   "framework": "nextjs",
-  "functions": {
-    "app/**/*": {
-      "includeFiles": "**"
-    }
-  },
   "crons": [
     {
       "path": "/api/cron/reset-quotas",
