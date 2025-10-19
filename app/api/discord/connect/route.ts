@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { z } from "zod";
 
+// Force dynamic rendering (uses cookies)
+export const dynamic = 'force-dynamic';
+
 // Schema for Discord webhook URL validation
 const DiscordWebhookSchema = z.object({
   webhook_url: z.string().url().refine(

@@ -4,6 +4,9 @@ import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { createClient as createAdmin } from "@supabase/supabase-js";
 
+// Force dynamic rendering (uses cookies)
+export const dynamic = 'force-dynamic';
+
 const SkipTutorialSchema = z.object({
   reason: z.enum(["user_skip", "auto_skip"]).optional(),
 });

@@ -4,6 +4,9 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
+// Force dynamic rendering (uses cookies)
+export const dynamic = 'force-dynamic';
+
 // SECURITY: Whitelist allowed push notification endpoint domains
 // Only allow endpoints from known, trusted push service providers
 const ALLOWED_PUSH_DOMAINS = [

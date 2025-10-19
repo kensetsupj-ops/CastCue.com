@@ -11,6 +11,9 @@ import { checkRateLimit } from "@/lib/ratelimit";
 import { isTwitchCDNUrl } from "@/lib/twitch";
 import { ApiErrors } from "@/lib/api-errors";
 
+// Force dynamic rendering (uses cookies)
+export const dynamic = 'force-dynamic';
+
 const AutoPostRequestSchema = z.object({
   draft_id: z.string().uuid(),
 });

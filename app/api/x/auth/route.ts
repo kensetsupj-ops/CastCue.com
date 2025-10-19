@@ -3,6 +3,9 @@ import { createClient } from '@/lib/supabase/server';
 import { generateCodeVerifier, generateCodeChallenge, generateState } from '@/lib/pkce';
 import { cookies } from 'next/headers';
 
+// Force dynamic rendering (uses cookies)
+export const dynamic = 'force-dynamic';
+
 /**
  * POST /api/x/auth
  * Initiates X (Twitter) OAuth2 PKCE flow

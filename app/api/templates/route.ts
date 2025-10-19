@@ -5,6 +5,9 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/lib/db";
 import { ApiErrors } from "@/lib/api-errors";
 
+// Force dynamic rendering (uses cookies)
+export const dynamic = 'force-dynamic';
+
 // SECURITY: Byte-level validation to prevent DoS via large Unicode strings
 const validateByteSize = (val: string, maxBytes: number) => {
   const byteLength = new TextEncoder().encode(val).length;

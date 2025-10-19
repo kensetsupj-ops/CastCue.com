@@ -5,6 +5,9 @@ import { isAdmin, verifyAdminPassword } from "@/lib/admin";
 import { getAllStats } from "@/lib/admin-stats";
 import { checkRateLimit } from "@/lib/ratelimit";
 
+// Force dynamic rendering (uses cookies)
+export const dynamic = 'force-dynamic';
+
 /**
  * Rate limit config for admin endpoints
  * Stricter than default due to expensive queries

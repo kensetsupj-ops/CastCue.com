@@ -4,6 +4,9 @@ import { supabaseAdmin } from "@/lib/db";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
+// Force dynamic rendering (uses cookies)
+export const dynamic = 'force-dynamic';
+
 const SetDefaultTemplateSchema = z.object({
   template_id: z.string().uuid(),
 });

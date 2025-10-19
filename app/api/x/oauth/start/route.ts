@@ -4,6 +4,9 @@ import { randomBytes } from "crypto";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
+// Force dynamic rendering (uses cookies)
+export const dynamic = 'force-dynamic';
+
 /**
  * Start X OAuth flow
  * POST /api/x/oauth/start

@@ -7,6 +7,9 @@ import { supabaseAdmin } from "@/lib/db";
 import { validateCSRF } from "@/lib/csrf";
 import { checkRateLimit } from "@/lib/ratelimit";
 
+// Force dynamic rendering (uses cookies)
+export const dynamic = 'force-dynamic';
+
 const SubscribeRequestSchema = z.object({
   broadcaster_user_id: z.string(),
 });

@@ -4,6 +4,9 @@ import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { createClient as createAdmin } from "@supabase/supabase-js";
 
+// Force dynamic rendering (uses cookies)
+export const dynamic = 'force-dynamic';
+
 const UpdateTutorialSchema = z.object({
   tutorial_step: z.number().int().min(0).max(5),
   tutorial_completed: z.boolean().optional(),

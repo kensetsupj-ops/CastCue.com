@@ -11,6 +11,9 @@ import { hash } from "@/lib/crypto";
 import { validateCSRF } from "@/lib/csrf";
 import { checkRateLimit } from "@/lib/ratelimit";
 
+// Force dynamic rendering (uses cookies)
+export const dynamic = 'force-dynamic';
+
 const DispatchRequestSchema = z.object({
   stream_id: z.number(),
   title: z.string(),

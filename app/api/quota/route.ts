@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getQuota } from "@/lib/quota";
 import { createClient } from "@/lib/supabase/server";
 
+// Force dynamic rendering (uses cookies)
+export const dynamic = 'force-dynamic';
+
 /**
  * Get quota information
  * GET /api/quota

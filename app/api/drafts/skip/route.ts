@@ -3,6 +3,9 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/lib/db";
 import { createClient } from "@/lib/supabase/server";
 
+// Force dynamic rendering (uses cookies)
+export const dynamic = 'force-dynamic';
+
 const SkipDraftSchema = z.object({
   draft_id: z.string().uuid(),
 });

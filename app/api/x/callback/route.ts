@@ -3,6 +3,9 @@ import { createClient } from '@/lib/supabase/server';
 import { encrypt } from '@/lib/crypto';
 import { cookies } from 'next/headers';
 
+// Force dynamic rendering (uses cookies)
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/x/callback
  * Handles X (Twitter) OAuth2 callback with PKCE

@@ -5,6 +5,9 @@ import { supabaseAdmin } from "@/lib/db";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
+// Force dynamic rendering (uses cookies)
+export const dynamic = 'force-dynamic';
+
 /**
  * X OAuth callback
  * GET /api/x/oauth/callback

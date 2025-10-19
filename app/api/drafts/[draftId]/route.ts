@@ -3,6 +3,9 @@ import { supabaseAdmin } from "@/lib/db";
 import { createClient } from "@/lib/supabase/server";
 import { selectTemplateForABTest } from "@/lib/ab-test";
 
+// Force dynamic rendering (uses cookies)
+export const dynamic = 'force-dynamic';
+
 /**
  * Get draft by ID
  * GET /api/drafts/[draftId]

@@ -6,6 +6,9 @@ import { createClient } from "@/lib/supabase/server";
 import { timingSafeEqual } from "crypto";
 import { checkRateLimit } from "@/lib/ratelimit";
 
+// Force dynamic rendering (uses cookies)
+export const dynamic = 'force-dynamic';
+
 const SampleRequestSchema = z.object({
   stream_id: z.number().int().positive(),
 });

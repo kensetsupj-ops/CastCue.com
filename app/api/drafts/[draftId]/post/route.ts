@@ -7,6 +7,9 @@ import { replaceWithShortLink } from "@/lib/link";
 import { startSampling } from "@/lib/sampling";
 import { randomBytes } from "crypto";
 
+// Force dynamic rendering (uses cookies)
+export const dynamic = 'force-dynamic';
+
 const ManualPostRequestSchema = z.object({
   body: z.string().min(1).max(280),
   media_ids: z.array(z.string()).max(4).optional(), // X allows up to 4 images

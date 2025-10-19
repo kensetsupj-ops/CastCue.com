@@ -4,6 +4,9 @@ import { createServerClient } from "@supabase/ssr";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/db";
 
+// Force dynamic rendering (uses cookies)
+export const dynamic = 'force-dynamic';
+
 // Schema for settings validation
 const SettingsSchema = z.object({
   default_template_id: z.string().uuid().nullable().optional(),
