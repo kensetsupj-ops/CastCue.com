@@ -1,95 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
 
 /**
- * ⚠️⚠️⚠️ CRITICAL WARNING: NOT PRODUCTION-READY ⚠️⚠️⚠️
- *
- * この実装はVercelのサーバーレス環境では**効果がありません**。
- * 各リクエストが異なるインスタンスで処理されるため、Mapは共有されません。
- *
- * 【本番運用前に必須】: Upstash Redisへの移行が必要です
- *
- * セットアップガイド: docs/deployment/upstash-setup.md
- * 所要時間: 15分
- * コスト: 無料（10,000 commands/day）
- *
- * 影響を受けるエンドポイント:
- * - /api/drafts/auto-post (重複投稿リスク)
- * - /api/sampling (API乱用リスク)
- * - /api/dispatch
- * - /api/twitch/subscribe
- *
- * ⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️
- *
- * Rate Limiting Middleware (IN-MEMORY - DEVELOPMENT ONLY)
- *
- * Implements a sliding window rate limiter to prevent API abuse.
- * Uses in-memory storage with automatic cleanup.
- *
- * Default limits:
- * - Authenticated users: 100 requests per 15 minutes
- * - Anonymous (by IP): 20 requests per 15 minutes
+ * PRODUCTION: Upstash Redis-based distributed rate limiting
+ * Works correctly in Vercel serverless environment
  */
 
-interface RateLimitEntry {
-  timestamps: number[];
-  lastCleanup: number;
-}
+// Initialize Redis client
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL!,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+});
 
-// In-memory store for rate limiting
-const rateLimitStore = new Map<string, RateLimitEntry>();
+// Create rate limiters with different configurations
+const rateLimiters = {
+  // Standard rate limit: 100 requests per 15 minutes
+  standard: new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(100, "15 m"),
+    analytics: true,
+    prefix: "ratelimit:standard",
+  }),
 
-// Cleanup old entries every 30 minutes
-const CLEANUP_INTERVAL = 30 * 60 * 1000;
-let lastGlobalCleanup = Date.now();
-
-/**
- * Rate limit configuration
- */
-interface RateLimitConfig {
-  windowMs: number; // Time window in milliseconds
-  maxRequests: number; // Maximum requests allowed in the window
-}
-
-const DEFAULT_CONFIG: RateLimitConfig = {
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  maxRequests: 100, // 100 requests per 15 minutes
+  // Anonymous rate limit: 20 requests per 15 minutes
+  anonymous: new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(20, "15 m"),
+    analytics: true,
+    prefix: "ratelimit:anonymous",
+  }),
 };
-
-const ANONYMOUS_CONFIG: RateLimitConfig = {
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  maxRequests: 20, // 20 requests per 15 minutes (stricter for anonymous)
-};
-
-/**
- * Clean up old timestamps from a rate limit entry
- */
-function cleanupEntry(entry: RateLimitEntry, windowMs: number): void {
-  const now = Date.now();
-  const cutoff = now - windowMs;
-
-  entry.timestamps = entry.timestamps.filter((timestamp) => timestamp > cutoff);
-  entry.lastCleanup = now;
-}
-
-/**
- * Perform global cleanup of the rate limit store
- */
-function performGlobalCleanup(): void {
-  const now = Date.now();
-
-  if (now - lastGlobalCleanup > CLEANUP_INTERVAL) {
-    // Remove entries that haven't been accessed in the last hour
-    const oneHourAgo = now - 60 * 60 * 1000;
-
-    for (const [key, entry] of rateLimitStore.entries()) {
-      if (entry.lastCleanup < oneHourAgo || entry.timestamps.length === 0) {
-        rateLimitStore.delete(key);
-      }
-    }
-
-    lastGlobalCleanup = now;
-  }
-}
 
 /**
  * Get client identifier (user ID or IP address)
@@ -110,113 +51,108 @@ function getClientIdentifier(req: NextRequest, userId?: string): string {
 }
 
 /**
+ * Rate limit configuration
+ */
+interface RateLimitConfig {
+  windowMs: number; // Time window in milliseconds
+  maxRequests: number; // Maximum requests allowed in the window
+}
+
+/**
  * Check if request exceeds rate limit
  *
  * @param req - The Next.js request object
  * @param userId - Optional user ID (authenticated users get higher limits)
- * @param config - Optional custom rate limit configuration
+ * @param config - Optional custom rate limit configuration (not used with Upstash)
  * @returns NextResponse with 429 error if rate limit exceeded, null otherwise
  */
-export function checkRateLimit(
+export async function checkRateLimit(
   req: NextRequest,
   userId?: string,
   config?: RateLimitConfig
-): NextResponse | null {
-  // Perform global cleanup periodically
-  performGlobalCleanup();
+): Promise<NextResponse | null> {
+  try {
+    // Get client identifier
+    const identifier = getClientIdentifier(req, userId);
 
-  // Use custom config or default based on authentication status
-  const rateLimitConfig = config || (userId ? DEFAULT_CONFIG : ANONYMOUS_CONFIG);
-  const { windowMs, maxRequests } = rateLimitConfig;
+    // Select rate limiter based on authentication
+    const limiter = userId ? rateLimiters.standard : rateLimiters.anonymous;
 
-  // Get client identifier
-  const clientId = getClientIdentifier(req, userId);
+    // Check rate limit
+    const { success, limit, reset, remaining } = await limiter.limit(identifier);
 
-  // Get or create rate limit entry
-  let entry = rateLimitStore.get(clientId);
+    if (!success) {
+      const retryAfter = Math.ceil((reset - Date.now()) / 1000);
 
-  if (!entry) {
-    entry = {
-      timestamps: [],
-      lastCleanup: Date.now(),
-    };
-    rateLimitStore.set(clientId, entry);
-  }
+      console.warn(
+        `Rate limit exceeded for ${identifier}: ${limit} requests per window`
+      );
 
-  // Clean up old timestamps
-  cleanupEntry(entry, windowMs);
-
-  // Check if limit is exceeded
-  if (entry.timestamps.length >= maxRequests) {
-    const oldestTimestamp = entry.timestamps[0];
-    const resetTime = oldestTimestamp + windowMs;
-    const retryAfter = Math.ceil((resetTime - Date.now()) / 1000);
-
-    console.warn(
-      `Rate limit exceeded for ${clientId}: ${entry.timestamps.length}/${maxRequests} requests`
-    );
-
-    return NextResponse.json(
-      {
-        error: "Too many requests",
-        message: `Rate limit exceeded. Please try again in ${retryAfter} seconds.`,
-        retryAfter,
-      },
-      {
-        status: 429,
-        headers: {
-          "Retry-After": retryAfter.toString(),
-          "X-RateLimit-Limit": maxRequests.toString(),
-          "X-RateLimit-Remaining": "0",
-          "X-RateLimit-Reset": new Date(resetTime).toISOString(),
+      return NextResponse.json(
+        {
+          error: "Too many requests",
+          message: `Rate limit exceeded. Please try again in ${retryAfter} seconds.`,
+          retryAfter,
         },
-      }
+        {
+          status: 429,
+          headers: {
+            "Retry-After": retryAfter.toString(),
+            "X-RateLimit-Limit": limit.toString(),
+            "X-RateLimit-Remaining": "0",
+            "X-RateLimit-Reset": new Date(reset).toISOString(),
+          },
+        }
+      );
+    }
+
+    return null; // Rate limit check passed
+  } catch (error) {
+    console.error("[Rate Limit] Error checking rate limit:", error);
+
+    // SECURITY: Fail open to avoid blocking legitimate users due to Redis issues
+    // Log the error and allow the request through
+    console.warn(
+      "[Rate Limit] Allowing request due to error - investigate immediately"
     );
+    return null;
   }
-
-  // Record this request
-  entry.timestamps.push(Date.now());
-
-  return null; // Rate limit check passed
 }
 
 /**
  * Get rate limit info for a client (useful for including in response headers)
  */
-export function getRateLimitInfo(
+export async function getRateLimitInfo(
   req: NextRequest,
   userId?: string,
   config?: RateLimitConfig
-): {
+): Promise<{
   limit: number;
   remaining: number;
   reset: Date;
-} {
-  const rateLimitConfig = config || (userId ? DEFAULT_CONFIG : ANONYMOUS_CONFIG);
-  const { windowMs, maxRequests } = rateLimitConfig;
+}> {
+  try {
+    const identifier = getClientIdentifier(req, userId);
+    const limiter = userId ? rateLimiters.standard : rateLimiters.anonymous;
 
-  const clientId = getClientIdentifier(req, userId);
-  const entry = rateLimitStore.get(clientId);
+    const { limit, remaining, reset } = await limiter.limit(identifier);
 
-  if (!entry) {
+    return {
+      limit,
+      remaining: Math.max(0, remaining),
+      reset: new Date(reset),
+    };
+  } catch (error) {
+    console.error("[Rate Limit] Error getting rate limit info:", error);
+
+    // Return default values on error
+    const maxRequests = userId ? 100 : 20;
     return {
       limit: maxRequests,
       remaining: maxRequests,
-      reset: new Date(Date.now() + windowMs),
+      reset: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes from now
     };
   }
-
-  cleanupEntry(entry, windowMs);
-
-  const remaining = Math.max(0, maxRequests - entry.timestamps.length);
-  const oldestTimestamp = entry.timestamps[0] || Date.now();
-  const reset = new Date(oldestTimestamp + windowMs);
-
-  return {
-    limit: maxRequests,
-    remaining,
-    reset,
-  };
 }
 
 /**
