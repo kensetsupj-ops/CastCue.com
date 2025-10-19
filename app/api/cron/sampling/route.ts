@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/db";
 import { sampleViewerCount } from "@/lib/sampling";
 
+// Force dynamic rendering (uses request.headers)
+export const dynamic = 'force-dynamic';
+
 /**
  * Cron Job - Sample viewer counts for active streams
  *

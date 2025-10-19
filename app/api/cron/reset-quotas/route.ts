@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resetMonthlyQuotas } from "@/lib/quota";
 
+// Force dynamic rendering (uses request.headers)
+export const dynamic = 'force-dynamic';
+
 /**
  * Vercel Cron Job - Reset monthly quotas
  *
