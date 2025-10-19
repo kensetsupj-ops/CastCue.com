@@ -13,6 +13,7 @@ import {
   LogOut,
   Moon,
   Sun,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -40,6 +41,7 @@ export function Sidebar() {
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const supabase = createClient();
   const { theme, toggleTheme } = useTheme();
 
@@ -72,6 +74,14 @@ export function Sidebar() {
 
     loadProfile();
   }, [supabase, router]);
+
+  // Check if user has admin password saved
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const adminPassword = localStorage.getItem('castcue_admin_password');
+      setIsAdmin(!!adminPassword);
+    }
+  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -110,6 +120,25 @@ export function Sidebar() {
               </Link>
             );
           })}
+
+          {/* 管理メニュー（管理者のみ表示） */}
+          {isAdmin && (
+            <>
+              <div className="my-2 border-t border-neutral-border dark:border-gray-700"></div>
+              <Link
+                href="/admin"
+                className={cn(
+                  "flex items-center gap-3 rounded-sm px-3 py-2.5 text-sm font-medium transition-ui",
+                  pathname === '/admin'
+                    ? "bg-danger/10 text-danger dark:bg-danger/20 dark:text-danger"
+                    : "text-neutral-sub dark:text-gray-400 hover:bg-neutral-bg dark:hover:bg-gray-700 hover:text-neutral-ink dark:hover:text-gray-100"
+                )}
+              >
+                <Shield className="h-5 w-5" strokeWidth={1.75} />
+                管理画面
+              </Link>
+            </>
+          )}
         </nav>
 
         {/* Footer */}

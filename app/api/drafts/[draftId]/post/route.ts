@@ -87,11 +87,14 @@ export async function POST(
 
     // Replace Twitch URL with short link for click tracking
     const campaignId = `stream-${draft.stream_id}`;
+    const hasMedia = !!(media_ids && media_ids.length > 0); // Check if user attached media
     const { text: bodyWithShortLink, linkId } = await replaceWithShortLink(
       draft.user_id,
       bodyText,
       draft.twitch_url,
-      campaignId
+      campaignId,
+      draft.stream_id, // For OGP metadata generation
+      hasMedia // Skip OGP if media attached (to avoid conflict)
     );
 
     // Get user's X access token

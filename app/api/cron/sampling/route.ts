@@ -22,6 +22,12 @@ export async function GET(req: NextRequest) {
 }
 
 async function handleSampling(req: NextRequest) {
+  const startTime = Date.now();
+  let activeStreamsCount = 0;
+  let successfulSamples = 0;
+  let failedSamples = 0;
+  let errorMessage: string | null = null;
+
   try {
     // Verify cron secret for security
     const authHeader = req.headers.get("authorization");
@@ -53,8 +59,21 @@ async function handleSampling(req: NextRequest) {
       throw streamsError;
     }
 
+    activeStreamsCount = activeStreams?.length || 0;
+
     if (!activeStreams || activeStreams.length === 0) {
       console.log("[cron] No active streams to sample");
+
+      // Record metrics even when there are no active streams
+      await recordSamplingMetrics({
+        activeStreamsCount: 0,
+        successfulSamples: 0,
+        failedSamples: 0,
+        executionTimeMs: Date.now() - startTime,
+        errorMessage: null,
+        source: "github-actions",
+      });
+
       return NextResponse.json({
         success: true,
         message: "No active streams",
@@ -96,19 +115,29 @@ async function handleSampling(req: NextRequest) {
     );
 
     // Count successful and failed samples
-    const successful = results.filter((r) => r.status === "fulfilled").length;
-    const failed = results.filter((r) => r.status === "rejected").length;
+    successfulSamples = results.filter((r) => r.status === "fulfilled").length;
+    failedSamples = results.filter((r) => r.status === "rejected").length;
 
     console.log(
-      `[cron] Sampling complete: ${successful} successful, ${failed} failed`
+      `[cron] Sampling complete: ${successfulSamples} successful, ${failedSamples} failed`
     );
+
+    // Record metrics to database
+    await recordSamplingMetrics({
+      activeStreamsCount,
+      successfulSamples,
+      failedSamples,
+      executionTimeMs: Date.now() - startTime,
+      errorMessage: failedSamples > 0 ? "Some samples failed" : null,
+      source: "github-actions",
+    });
 
     return NextResponse.json({
       success: true,
       message: "Sampling complete",
       total: activeStreams.length,
-      successful,
-      failed,
+      successful: successfulSamples,
+      failed: failedSamples,
       results: results.map((r, i) => ({
         stream_id: activeStreams[i].id,
         status: r.status,
@@ -118,6 +147,18 @@ async function handleSampling(req: NextRequest) {
     });
   } catch (error: any) {
     console.error("[cron] Viewer sampling job error:", error);
+    errorMessage = error.message || "Unknown error";
+
+    // Record metrics even on error
+    await recordSamplingMetrics({
+      activeStreamsCount,
+      successfulSamples,
+      failedSamples,
+      executionTimeMs: Date.now() - startTime,
+      errorMessage,
+      source: "github-actions",
+    });
+
     return NextResponse.json(
       {
         error: "Sampling job failed",
@@ -125,5 +166,35 @@ async function handleSampling(req: NextRequest) {
       },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * Record sampling metrics to database for monitoring and Vercel Pro migration decision
+ */
+async function recordSamplingMetrics(metrics: {
+  activeStreamsCount: number;
+  successfulSamples: number;
+  failedSamples: number;
+  executionTimeMs: number;
+  errorMessage: string | null;
+  source: string;
+}) {
+  try {
+    await supabaseAdmin.from("sampling_metrics").insert({
+      active_streams_count: metrics.activeStreamsCount,
+      successful_samples: metrics.successfulSamples,
+      failed_samples: metrics.failedSamples,
+      execution_time_ms: metrics.executionTimeMs,
+      error_message: metrics.errorMessage,
+      source: metrics.source,
+    });
+
+    console.log(
+      `[cron] Recorded metrics: ${metrics.activeStreamsCount} streams, ${metrics.executionTimeMs}ms`
+    );
+  } catch (error) {
+    console.error("[cron] Failed to record sampling metrics:", error);
+    // Don't throw - metrics recording failure shouldn't break sampling
   }
 }

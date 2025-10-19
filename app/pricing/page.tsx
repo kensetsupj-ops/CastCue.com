@@ -3,12 +3,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Check, Sparkles, ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { Metadata } from "next";
+import { pricingMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
-  title: "料金｜CastCue",
-  description: "現在はベータ版として、完全無料でご利用いただけます。",
-};
+export const metadata = pricingMetadata;
 
 export default function PricingPage() {
   const features = [

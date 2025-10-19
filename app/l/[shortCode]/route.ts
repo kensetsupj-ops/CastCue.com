@@ -7,8 +7,68 @@ const supabaseAdmin = createClient(
 );
 
 /**
+ * Generate HTML with OGP meta tags for social media previews
+ */
+function generateOGPHtml(params: {
+  title: string;
+  description: string;
+  image: string;
+  url: string;
+  siteName: string;
+}): string {
+  const { title, description, image, url, siteName } = params;
+
+  return `<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(title)}</title>
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="${escapeHtml(url)}">
+  <meta property="og:title" content="${escapeHtml(title)}">
+  <meta property="og:description" content="${escapeHtml(description)}">
+  <meta property="og:image" content="${escapeHtml(image)}">
+  <meta property="og:site_name" content="${escapeHtml(siteName)}">
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:url" content="${escapeHtml(url)}">
+  <meta name="twitter:title" content="${escapeHtml(title)}">
+  <meta name="twitter:description" content="${escapeHtml(description)}">
+  <meta name="twitter:image" content="${escapeHtml(image)}">
+
+  <!-- Auto-redirect after 1 second -->
+  <meta http-equiv="refresh" content="1;url=${escapeHtml(url)}">
+</head>
+<body>
+  <p>Redirecting to <a href="${escapeHtml(url)}">${escapeHtml(siteName)}</a>...</p>
+</body>
+</html>`;
+}
+
+/**
+ * Escape HTML special characters to prevent XSS
+ */
+function escapeHtml(text: string): string {
+  const map: Record<string, string> = {
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;",
+  };
+  return text.replace(/[&<>"']/g, (char) => map[char] || char);
+}
+
+/**
  * GET /l/[shortCode]
  * Short URL redirect with click tracking
+ *
+ * For social media crawlers (Twitter, Facebook), returns OGP meta tags
+ * For regular users, performs immediate redirect
  */
 export async function GET(
   req: NextRequest,
@@ -17,10 +77,26 @@ export async function GET(
   try {
     const { shortCode } = await params;
 
-    // Look up the short code in the database
+    // Look up the short code in the database with stream information
     const { data: link, error } = await supabaseAdmin
       .from("links")
-      .select("id, target_url, user_id")
+      .select(`
+        id,
+        target_url,
+        user_id,
+        stream_id,
+        has_media,
+        streams (
+          id,
+          title,
+          user_id,
+          twitch_accounts (
+            display_name,
+            profile_image_url,
+            broadcaster_login
+          )
+        )
+      `)
       .eq("short_code", shortCode)
       .single();
 
@@ -62,6 +138,40 @@ export async function GET(
     // SECURITY: Limit header sizes to prevent database storage exhaustion
     const userAgent = req.headers.get("user-agent")?.slice(0, 500) || undefined;
     const referrer = req.headers.get("referer")?.slice(0, 2000) || undefined;
+
+    // Check if this is a social media crawler
+    const isCrawler = userAgent && (
+      userAgent.includes("Twitterbot") ||
+      userAgent.includes("facebookexternalhit") ||
+      userAgent.includes("LinkedInBot") ||
+      userAgent.includes("Slackbot")
+    );
+
+    // For crawlers, return OGP meta tags for rich previews
+    // Skip OGP if has_media is true (image attachment takes priority over OGP card)
+    if (isCrawler && !link.has_media && link.stream_id && link.streams) {
+      const stream = Array.isArray(link.streams) ? link.streams[0] : link.streams;
+      const twitchAccount = Array.isArray(stream.twitch_accounts)
+        ? stream.twitch_accounts[0]
+        : stream.twitch_accounts;
+
+      // Generate OGP HTML
+      const html = generateOGPHtml({
+        title: stream.title || "Twitch配信",
+        description: `${twitchAccount?.display_name || "配信者"}の配信を視聴`,
+        image: twitchAccount?.profile_image_url || "",
+        url: link.target_url,
+        siteName: "Twitch",
+      });
+
+      return new NextResponse(html, {
+        status: 200,
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          "Cache-Control": "public, max-age=300", // Cache for 5 minutes
+        },
+      });
+    }
 
     // Record the click asynchronously (don't wait for it to complete)
     // This ensures the redirect is fast

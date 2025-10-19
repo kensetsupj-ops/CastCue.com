@@ -1,11 +1,9 @@
 import PageLayout from "@/components/PageLayout";
 import { Card, CardContent } from "@/components/ui/card";
-import { Metadata } from "next";
+import { faqMetadata } from "@/lib/seo/metadata";
+import { FAQPageSchema } from "@/lib/seo/structured-data";
 
-export const metadata: Metadata = {
-  title: "よくある質問｜CastCue",
-  description: "CastCueについてよくいただく質問とその回答をまとめました。",
-};
+export const metadata = faqMetadata;
 
 export default function FAQPage() {
   const faqs = [
@@ -114,6 +112,9 @@ export default function FAQPage() {
 
   return (
     <PageLayout>
+      {/* 構造化データ（FAQ） */}
+      <FAQPageSchema />
+
       {/* Hero Section */}
       <section className="border-b border-neutral-border bg-gradient-to-b from-primary/5 to-transparent py-20">
         <div className="container">

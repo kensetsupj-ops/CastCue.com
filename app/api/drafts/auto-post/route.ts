@@ -95,16 +95,6 @@ export async function POST(req: NextRequest) {
     // Always add Twitch URL at the end
     body_text = `${body_text}\n${draft.twitch_url}`;
 
-    // Replace Twitch URL with short link for click tracking
-    const campaignId = `stream-${draft.stream_id}`;
-    const { text: body_with_short_link, linkId } = await replaceWithShortLink(
-      draft.user_id,
-      body_text,
-      draft.twitch_url,
-      campaignId
-    );
-    body_text = body_with_short_link;
-
     // CONCURRENCY: Acquire lock by updating draft status to "posted" BEFORE posting to X
     // This prevents duplicate posts if user clicks multiple times or from multiple devices
     const { data: updatedDraft, error: updateError } = await supabaseAdmin
@@ -171,6 +161,19 @@ export async function POST(req: NextRequest) {
         // Continue without image if upload fails
       }
     }
+
+    // Replace Twitch URL with short link for click tracking
+    const campaignId = `stream-${draft.stream_id}`;
+    const hasMedia = !!(mediaIds && mediaIds.length > 0); // Check if media was successfully uploaded
+    const { text: body_with_short_link, linkId } = await replaceWithShortLink(
+      draft.user_id,
+      body_text,
+      draft.twitch_url,
+      campaignId,
+      draft.stream_id, // For OGP metadata generation
+      hasMedia // Skip OGP if media attached (to avoid conflict)
+    );
+    body_text = body_with_short_link;
 
     // Post to X (Twitter)
     const startTime = Date.now();

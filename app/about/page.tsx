@@ -1,11 +1,8 @@
 import PageLayout from "@/components/PageLayout";
 import { Card, CardContent } from "@/components/ui/card";
-import { Metadata } from "next";
+import { aboutMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
-  title: "About｜CastCue",
-  description: "配信者が配信に集中できる世界を目指して。CastCueのミッションと価値観をご紹介します。",
-};
+export const metadata = aboutMetadata;
 
 export default function AboutPage() {
   const values = [

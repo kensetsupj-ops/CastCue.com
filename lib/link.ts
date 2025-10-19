@@ -7,7 +7,9 @@ import { generateShortCode } from "./utils";
 export async function createShortLink(
   userId: string,
   targetUrl: string,
-  campaignId?: string
+  campaignId?: string,
+  streamId?: number,
+  hasMedia?: boolean
 ): Promise<{ id: string; shortCode: string; shortUrl: string }> {
   let shortCode: string;
   let attempts = 0;
@@ -44,6 +46,8 @@ export async function createShortLink(
       short_code: shortCode!,
       target_url: targetUrl,
       campaign_id: campaignId,
+      stream_id: streamId,
+      has_media: hasMedia ?? false,
     })
     .select("id, short_code")
     .single();
@@ -113,12 +117,16 @@ export async function replaceWithShortLink(
   userId: string,
   text: string,
   url: string,
-  campaignId?: string
+  campaignId?: string,
+  streamId?: number,
+  hasMedia?: boolean
 ): Promise<{ text: string; linkId: string; shortUrl: string }> {
   const { id, shortCode, shortUrl } = await createShortLink(
     userId,
     url,
-    campaignId
+    campaignId,
+    streamId,
+    hasMedia
   );
 
   // Replace the URL in the text

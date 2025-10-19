@@ -3,12 +3,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { Metadata } from "next";
+import { howToUseMetadata } from "@/lib/seo/metadata";
+import { HowToSchema } from "@/lib/seo/structured-data";
 
-export const metadata: Metadata = {
-  title: "使い方｜CastCue",
-  description: "たった4ステップで、配信告知を自動化できます。セットアップは10分以内に完了します。",
-};
+export const metadata = howToUseMetadata;
 
 export default function HowToUsePage() {
   const steps = [
@@ -75,6 +73,9 @@ export default function HowToUsePage() {
 
   return (
     <PageLayout>
+      {/* 構造化データ（HowTo） */}
+      <HowToSchema />
+
       {/* Hero Section */}
       <section className="border-b border-neutral-border bg-gradient-to-b from-primary/5 to-transparent py-20">
         <div className="container">

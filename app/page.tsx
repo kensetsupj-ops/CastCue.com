@@ -5,12 +5,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { BarChart3, Shield, ArrowRight, Check, TrendingUp, Users, Clock, Sparkles, Bell, Edit3, Zap, Target } from "lucide-react";
 import ScrollToTop from "@/components/ScrollToTop";
 import ScrollReveal from "@/components/ScrollReveal";
-import { Metadata } from "next";
+import { homeMetadata } from "@/lib/seo/metadata";
+import { SoftwareApplicationSchema, FAQPageSchema, OrganizationSchema, WebSiteSchema } from "@/lib/seo/structured-data";
 
-export const metadata: Metadata = {
-  title: "CastCue｜配信開始を自動でツイート。",
-  description: "Twitch配信の開始を自動検知し、X（Twitter）で即座に自動ツイート。告知の効果をリアルタイムで可視化。配信前のマーケティングを自動化します。",
-};
+export const metadata = homeMetadata;
 
 export default function Home() {
   const features = [
@@ -133,6 +131,12 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-neutral-surface overflow-hidden">
+      {/* 構造化データ（JSON-LD） */}
+      <SoftwareApplicationSchema />
+      <FAQPageSchema />
+      <OrganizationSchema />
+      <WebSiteSchema />
+
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 border-b border-neutral-border bg-white shadow-sm">
         <div className="container flex h-16 items-center justify-between">

@@ -20,7 +20,8 @@ const nextConfig: NextConfig = {
         hostname: 'pbs.twimg.com',  // X/Twitter profile images
       },
     ],
-    qualities: [75, 90, 100],
+    formats: ['image/avif', 'image/webp'],
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920],
   },
 };
 

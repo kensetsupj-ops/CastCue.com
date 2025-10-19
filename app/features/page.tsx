@@ -1,12 +1,9 @@
 import PageLayout from "@/components/PageLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Bell, BarChart3, Shield, Zap, Edit3, Clock } from "lucide-react";
-import { Metadata } from "next";
+import { featuresMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
-  title: "機能｜CastCue",
-  description: "CastCueが提供する、配信告知を自動化するための機能をご紹介します。",
-};
+export const metadata = featuresMetadata;
 
 export default function FeaturesPage() {
   const features = [
