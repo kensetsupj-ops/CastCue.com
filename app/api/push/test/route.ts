@@ -9,17 +9,9 @@ export const dynamic = 'force-dynamic';
  * Test push notification endpoint
  * POST /api/push/test
  *
- * 開発環境専用: ブラウザ通知のテスト用エンドポイント
+ * ブラウザ通知のテスト用エンドポイント（認証済みユーザーのみ）
  */
 export async function POST(req: NextRequest) {
-  // 開発環境のみ許可
-  if (process.env.NODE_ENV !== 'development') {
-    return NextResponse.json(
-      { error: "This endpoint is only available in development" },
-      { status: 403 }
-    );
-  }
-
   try {
     // 認証チェック
     const supabase = await createClient();
