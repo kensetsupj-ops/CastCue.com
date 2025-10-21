@@ -23,7 +23,6 @@ const TemplateSchema = z.object({
     (val) => validateByteSize(val, 2000),
     { message: "Template body exceeds byte limit (2000 bytes)" }
   ),
-  variant: z.enum(["A", "B"]).optional().default("A"),
 });
 
 /**
@@ -129,7 +128,6 @@ export async function GET(req: NextRequest) {
       return {
         id: template.id,
         name: template.name,
-        variant: template.variant,
         usageCount,
         winRate,
         body: template.body,
@@ -201,7 +199,7 @@ export async function POST(req: NextRequest) {
     let validatedData;
     try {
       validatedData = TemplateSchema.parse(requestBody);
-      console.log("[templates] Validation successful, variant:", validatedData.variant);
+      console.log("[templates] Validation successful");
     } catch (validationError) {
       if (validationError instanceof z.ZodError) {
         console.error("[templates] Validation error:", validationError.issues);
@@ -216,7 +214,7 @@ export async function POST(req: NextRequest) {
       throw validationError;
     }
 
-    const { name, body: templateBody, variant } = validatedData;
+    const { name, body: templateBody } = validatedData;
 
     // テンプレート作成
     console.log("[templates] Creating template for user:", user.id);
@@ -226,7 +224,6 @@ export async function POST(req: NextRequest) {
         user_id: user.id,
         name,
         body: templateBody,
-        variant,
       })
       .select()
       .single();
@@ -256,7 +253,6 @@ export async function POST(req: NextRequest) {
       template: {
         id: template.id,
         name: template.name,
-        variant: template.variant,
         usageCount: 0,
         winRate: 0,
         body: template.body,

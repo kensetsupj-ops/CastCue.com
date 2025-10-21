@@ -297,17 +297,13 @@ function IntegrationsContent() {
       }
 
       // Request permission
-      console.log('通知許可をリクエスト中...', 'Current:', Notification.permission);
+      console.log('通知許可をリクエスト中...');
       const permission = await Notification.requestPermission();
       console.log('通知許可の結果:', permission);
-
-      // Ensure state is updated immediately
       setPushPermission(permission);
-      console.log('pushPermission state updated to:', permission);
 
       if (permission !== 'granted') {
-        console.log('通知が拒否されました。バナーを表示します。');
-        setMessage({ type: 'error', text: '通知がブロックされています。以下の手順で設定を変更してください。' });
+        setMessage({ type: 'error', text: '通知の許可が必要です。ブラウザの設定から許可してください。' });
         return;
       }
 
@@ -772,12 +768,8 @@ function IntegrationsContent() {
                   </p>
                 </div>
               </div>
-              {(() => {
-                console.log('[Banner Check] pushPermission:', pushPermission, 'pushSubscribed:', pushSubscribed);
-                return pushPermission === 'denied';
-              })() ? (
+              {pushPermission === 'denied' ? (
                 (() => {
-                  console.log('[Banner Display] Showing notification blocked banner');
                   const browser = detectBrowser();
                   const instructions = getNotificationInstructions(browser);
 
