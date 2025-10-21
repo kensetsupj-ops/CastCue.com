@@ -165,35 +165,43 @@ self.addEventListener('push', (event) => {
 
   // Determine action buttons based on notification type
   const notificationType = data.data?.type || 'stream_start';
-  const actions = notificationType === 'game_change'
-    ? [
-        {
-          action: 'template',
-          title: 'テンプレートで投稿',
-        },
-        {
-          action: 'edit',
-          title: '編集して投稿',
-        },
-        {
-          action: 'dismiss',
-          title: '閉じる',
-        },
-      ]
-    : [
-        {
-          action: 'template',
-          title: 'テンプレートで投稿',
-        },
-        {
-          action: 'edit',
-          title: '編集して投稿',
-        },
-        {
-          action: 'dismiss',
-          title: '閉じる',
-        },
-      ];
+  let actions;
+
+  if (notificationType === 'test') {
+    // Test notifications have no actions (just dismiss)
+    actions = [];
+  } else if (notificationType === 'game_change') {
+    actions = [
+      {
+        action: 'template',
+        title: 'テンプレートで投稿',
+      },
+      {
+        action: 'edit',
+        title: '編集して投稿',
+      },
+      {
+        action: 'dismiss',
+        title: '閉じる',
+      },
+    ];
+  } else {
+    // stream_start and other types
+    actions = [
+      {
+        action: 'template',
+        title: 'テンプレートで投稿',
+      },
+      {
+        action: 'edit',
+        title: '編集して投稿',
+      },
+      {
+        action: 'dismiss',
+        title: '閉じる',
+      },
+    ];
+  }
 
   const options = {
     body: data.body,

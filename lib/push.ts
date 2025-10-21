@@ -180,6 +180,32 @@ export async function sendStreamStartNotification(
 }
 
 /**
+ * Send test notification to user
+ */
+export async function sendTestNotification(
+  userId: string
+): Promise<{ sent: number; failed: number }> {
+  const payload: PushNotificationPayload = {
+    title: "🔔 テスト通知",
+    body: "CastCueのプッシュ通知が正常に動作しています",
+    icon: "/icon-192x192.png",
+    badge: "/badge-72x72.png",
+    data: {
+      type: "test",
+      // No draftId or actions for test notifications
+    },
+  };
+
+  try {
+    const result = await sendPushNotification(userId, payload);
+    return { sent: result.success, failed: result.failed };
+  } catch (error) {
+    console.error("Failed to send test notification:", error);
+    return { sent: 0, failed: 1 };
+  }
+}
+
+/**
  * Send game change notification to user
  */
 export async function sendGameChangeNotification(

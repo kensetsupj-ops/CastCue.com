@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { sendDraftNotification } from "@/lib/push";
+import { sendTestNotification } from "@/lib/push";
 
 // Force dynamic rendering (uses cookies)
 export const dynamic = 'force-dynamic';
@@ -25,14 +25,7 @@ export async function POST(req: NextRequest) {
     }
 
     // テスト通知を送信
-    // NOTE: This endpoint is for testing push notifications only
-    // The draft_id is a placeholder UUID that doesn't exist in the database
-    const result = await sendDraftNotification(
-      user.id,
-      "00000000-0000-4000-8000-000000000000",
-      "【テスト配信】CastCueの通知テスト中！",
-      "https://twitch.tv/example"
-    );
+    const result = await sendTestNotification(user.id);
 
     console.log('[api/push/test] Test notification sent:', result);
 
