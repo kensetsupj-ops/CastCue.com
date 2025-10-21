@@ -48,10 +48,16 @@ export async function GET(request: Request) {
     }
 
     // Exchange authorization code for access token
+    // Create Basic auth header (required for confidential clients)
+    const basicAuth = Buffer.from(
+      `${process.env.X_CLIENT_ID}:${process.env.X_CLIENT_SECRET}`
+    ).toString('base64');
+
     const tokenResponse = await fetch('https://api.twitter.com/2/oauth2/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Basic ${basicAuth}`,
       },
       body: new URLSearchParams({
         code,
