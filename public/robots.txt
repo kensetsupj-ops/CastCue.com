@@ -1,0 +1,17 @@
+# robots.txt for castcue.com
+# CastCue - Twitch Streaming Notification Service
+
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://castcue.com/sitemap.xml
+
+# Block sensitive paths
+Disallow: /api/
+Disallow: /approve/
+Disallow: /_next/
+
+# Security
+User-agent: *
+Crawl-delay: 1
