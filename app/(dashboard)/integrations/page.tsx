@@ -672,11 +672,6 @@ function IntegrationsContent() {
                   <p className="text-small text-neutral-sub dark:text-gray-400">
                     スコープ: {xConnection.scope.join(', ')}
                   </p>
-                  {xConnection.expires_at && (
-                    <p className="text-small text-neutral-sub dark:text-gray-400">
-                      有効期限: {new Date(xConnection.expires_at).toLocaleDateString('ja-JP')}
-                    </p>
-                  )}
                 </div>
               </div>
               <Button
