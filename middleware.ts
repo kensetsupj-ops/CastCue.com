@@ -37,6 +37,7 @@ export function middleware(request: NextRequest) {
     "/api/webhooks/twitch",
     "/api/x/oauth/callback", // OAuth callback uses state parameter validation
     "/auth/callback", // Supabase auth callback
+    "/api/auth/twitch/callback", // Custom Twitch OAuth callback
   ];
 
   if (exemptPaths.some((path) => requestUrl.pathname === path)) {
