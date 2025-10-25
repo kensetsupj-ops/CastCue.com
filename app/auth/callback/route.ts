@@ -39,6 +39,19 @@ export async function GET(request: Request) {
         status: error.status,
         details: error
       })
+
+      // メールアドレスエラーの場合は特別処理を試みる
+      if (error.message?.includes('email') || error.message?.includes('Email')) {
+        console.log('[auth/callback] Email error detected, attempting workaround...')
+        // エラーでもセッションが作成されている可能性があるので確認
+        const { data: sessionData } = await supabase.auth.getSession()
+        if (sessionData?.session) {
+          console.log('[auth/callback] Session found despite error, continuing...')
+          await syncTwitchProfile(sessionData.session.user.id, sessionData.session.provider_token ?? undefined)
+          return NextResponse.redirect(`${siteUrl}${next}`)
+        }
+      }
+
       // エラーをログインページに伝える
       return NextResponse.redirect(`${siteUrl}/login?error=auth_failed&message=${encodeURIComponent(error.message)}`)
     }
