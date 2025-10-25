@@ -11,6 +11,13 @@ export async function GET(request: Request) {
   const error = searchParams.get('error')
   const errorDescription = searchParams.get('error_description')
 
+  // Get the correct redirect URL from environment
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.APP_ORIGIN
+  if (!siteUrl) {
+    console.error('[auth/callback] NEXT_PUBLIC_SITE_URL not configured')
+    return new NextResponse('Server configuration error', { status: 500 })
+  }
+
   // エラーパラメータがある場合は詳細をログ出力
   if (error || errorDescription) {
     console.error('[auth/callback] OAuth error:', {
@@ -34,13 +41,6 @@ export async function GET(request: Request) {
         console.log('[auth/callback] No session found, user needs to retry authentication')
       }
     }
-  }
-
-  // Get the correct redirect URL from environment
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.APP_ORIGIN
-  if (!siteUrl) {
-    console.error('[auth/callback] NEXT_PUBLIC_SITE_URL not configured')
-    return new NextResponse('Server configuration error', { status: 500 })
   }
 
   if (code) {
