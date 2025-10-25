@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/db'
 import { cookies } from 'next/headers'
-import { createClient } from '@/lib/supabase/server'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -126,14 +125,14 @@ export async function GET(request: Request) {
 
         // ユーザーが既に存在する場合はそのユーザーIDを取得
         if (authError?.message?.includes('already exists')) {
-          const { data: existingUser } = await supabaseAdmin.auth.admin.listUsers({
-            filter: `email.eq.${email}`
-          })
+          // getUserByEmailを使って既存ユーザーを検索
+          const { data: existingAuthData, error: getUserError } = await supabaseAdmin.auth.admin.getUserByEmail(email)
 
-          if (existingUser?.users?.[0]) {
-            userId = existingUser.users[0].id
+          if (existingAuthData?.user) {
+            userId = existingAuthData.user.id
             console.log('[twitch/callback] Found existing auth user:', userId)
           } else {
+            console.error('[twitch/callback] Could not find existing user:', getUserError)
             return NextResponse.redirect(`${siteUrl}/login?error=user_creation_failed`)
           }
         } else {
@@ -160,25 +159,10 @@ export async function GET(request: Request) {
       console.error('[twitch/callback] Failed to upsert profile:', profileError)
     }
 
-    // Supabaseのセッションを作成
-    const supabase = await createClient()
-
-    // Impersonateを使用してセッションを作成
-    const { data: { session }, error: sessionError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'magiclink',
-      email: twitchUser.email || `${twitchUser.id}@twitch.local`
-    })
-
-    if (sessionError) {
-      console.error('[twitch/callback] Failed to generate magic link:', sessionError)
-      // それでもダッシュボードにリダイレクトを試みる
-      return NextResponse.redirect(`${siteUrl}/dashboard`)
-    }
-
-    // セッションクッキーを設定
+    // ダッシュボードにリダイレクト
     const response = NextResponse.redirect(`${siteUrl}/dashboard`)
 
-    // アクセストークンをクッキーに保存（一時的な措置）
+    // ユーザーIDをクッキーに保存（セッション管理用）
     response.cookies.set('twitch_user_id', userId, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -186,7 +170,7 @@ export async function GET(request: Request) {
       maxAge: 60 * 60 * 24 * 7 // 7日間
     })
 
-    console.log('[twitch/callback] Authentication successful')
+    console.log('[twitch/callback] Authentication successful, redirecting to dashboard')
     return response
 
   } catch (error) {
