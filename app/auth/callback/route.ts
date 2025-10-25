@@ -66,7 +66,7 @@ async function syncTwitchProfile(userId: string, providerToken?: string) {
       display_name: twitchUser.display_name,
       profile_image_url: twitchUser.profile_image_url,
       broadcaster_type: twitchUser.broadcaster_type || 'none',
-      email: twitchUser.email,
+      email: twitchUser.email || null,  // emailが取得できない場合はnullを設定
     })
   } catch (error) {
     console.error('Twitchプロフィール同期エラー:', error)
