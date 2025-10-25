@@ -96,10 +96,9 @@ async function syncTwitchProfile(userId: string, providerToken?: string) {
     const twitchUser = data[0]
 
     // プロフィールをSupabaseに保存
-    const { createClient: createAdminClient } = await import('@/lib/supabase/server')
-    const supabase = await createAdminClient()
+    const { supabaseAdmin } = await import('@/lib/db')
 
-    await supabase.from('profiles').upsert({
+    await supabaseAdmin.from('profiles').upsert({
       user_id: userId,
       twitch_user_id: twitchUser.id,
       login: twitchUser.login,
