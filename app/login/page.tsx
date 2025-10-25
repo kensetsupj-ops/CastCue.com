@@ -2,15 +2,17 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
-import { useEffect, Suspense } from "react";
+import { ArrowRight, AlertCircle } from "lucide-react";
+import { useEffect, useState, Suspense } from "react";
 
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // URLパラメータからエラーメッセージを取得
   useEffect(() => {
@@ -19,10 +21,24 @@ function LoginContent() {
 
     if (error || message) {
       console.error('[LoginPage] Auth error:', { error, message });
+
+      // ユーザーフレンドリーなエラーメッセージを設定
+      if (message?.includes('email')) {
+        setErrorMessage('メールアドレスの取得に失敗しました。もう一度お試しください。');
+      } else if (error === 'auth_failed') {
+        setErrorMessage(message || '認証に失敗しました。もう一度お試しください。');
+      } else if (error === 'no_code') {
+        setErrorMessage('認証コードが取得できませんでした。もう一度お試しください。');
+      } else {
+        setErrorMessage('ログインに失敗しました。もう一度お試しください。');
+      }
     }
   }, [searchParams]);
 
   const handleTwitchLogin = async () => {
+    // エラーメッセージをクリア
+    setErrorMessage(null);
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'twitch',
       options: {
@@ -35,7 +51,7 @@ function LoginContent() {
 
     if (error) {
       console.error('ログインエラー:', error);
-      alert('ログインに失敗しました');
+      setErrorMessage('ログインに失敗しました。もう一度お試しください。');
     }
   };
 
@@ -64,6 +80,23 @@ function LoginContent() {
               Twitchアカウントでログインしてください
             </p>
           </div>
+
+          {/* Error Message */}
+          {errorMessage && (
+            <Card className="border-danger bg-danger/5">
+              <CardContent className="pt-6">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="h-5 w-5 text-danger mt-0.5 flex-shrink-0" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-danger">{errorMessage}</p>
+                    <p className="text-xs text-neutral-sub">
+                      問題が続く場合は、ブラウザのキャッシュをクリアして再度お試しください。
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Description */}
           <div className="bg-neutral-bg rounded-lg p-6 border border-neutral-border">
