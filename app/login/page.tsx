@@ -15,7 +15,9 @@ export default function LoginPage() {
       provider: 'twitch',
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
-        scopes: 'user:read:email', // Twitchからメールアドレスを取得するために必要
+        queryParams: {
+          scope: 'openid user:read:email', // Twitchからメールアドレスを取得するために必要（openidを追加）
+        },
       },
     });
 
