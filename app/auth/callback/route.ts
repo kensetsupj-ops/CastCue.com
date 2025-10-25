@@ -8,6 +8,17 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const code = searchParams.get('code')
   const next = searchParams.get('next') ?? '/dashboard'
+  const error = searchParams.get('error')
+  const errorDescription = searchParams.get('error_description')
+
+  // エラーパラメータがある場合は詳細をログ出力
+  if (error || errorDescription) {
+    console.error('[auth/callback] OAuth error:', {
+      error,
+      errorDescription,
+      url: request.url
+    })
+  }
 
   // Get the correct redirect URL from environment
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.APP_ORIGIN
@@ -18,9 +29,27 @@ export async function GET(request: Request) {
 
   if (code) {
     const supabase = await createClient()
+    console.log('[auth/callback] Attempting to exchange code for session...')
+
     const { data, error } = await supabase.auth.exchangeCodeForSession(code)
 
-    if (!error && data.user) {
+    if (error) {
+      console.error('[auth/callback] Session exchange error:', {
+        error: error.message,
+        status: error.status,
+        details: error
+      })
+      // エラーをログインページに伝える
+      return NextResponse.redirect(`${siteUrl}/login?error=auth_failed&message=${encodeURIComponent(error.message)}`)
+    }
+
+    if (data.user) {
+      console.log('[auth/callback] User authenticated successfully:', {
+        userId: data.user.id,
+        email: data.user.email,
+        provider: data.user.app_metadata?.provider
+      })
+
       // プロフィール同期を実行
       await syncTwitchProfile(data.user.id, data.session?.provider_token ?? undefined)
 
@@ -29,13 +58,11 @@ export async function GET(request: Request) {
       console.log(`[auth/callback] Redirecting to: ${redirectUrl}`)
       return NextResponse.redirect(redirectUrl)
     }
-
-    console.error('[auth/callback] Auth error:', error)
   }
 
   // エラーの場合はログインページへ
   console.warn('[auth/callback] No code or auth failed, redirecting to login')
-  return NextResponse.redirect(`${siteUrl}/login`)
+  return NextResponse.redirect(`${siteUrl}/login?error=no_code`)
 }
 
 async function syncTwitchProfile(userId: string, providerToken?: string) {

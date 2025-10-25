@@ -2,13 +2,25 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { useEffect } from "react";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
+
+  // URLパラメータからエラーメッセージを取得
+  useEffect(() => {
+    const error = searchParams.get('error');
+    const message = searchParams.get('message');
+
+    if (error || message) {
+      console.error('[LoginPage] Auth error:', { error, message });
+    }
+  }, [searchParams]);
 
   const handleTwitchLogin = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
