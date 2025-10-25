@@ -100,7 +100,7 @@ export async function GET(request: Request) {
     } else {
       // 新規ユーザーを作成
       // メールアドレスがない場合は仮のメールアドレスを使用
-      const email = twitchUser.email || `${twitchUser.id}@twitch.local`
+      const email = twitchUser.email || `twitch_${twitchUser.id}@castcue.local`
 
       console.log('[twitch/callback] Creating new user with email:', email)
 
@@ -123,19 +123,37 @@ export async function GET(request: Request) {
       if (authError || !authData.user) {
         console.error('[twitch/callback] Failed to create user:', authError)
 
-        // ユーザーが既に存在する場合はそのユーザーIDを取得
+        // ユーザーが既に存在する場合の処理
         if (authError?.message?.includes('already exists')) {
-          // getUserByEmailを使って既存ユーザーを検索
-          const { data: existingAuthData, error: getUserError } = await supabaseAdmin.auth.admin.getUserByEmail(email)
+          console.warn('[twitch/callback] User with this email already exists, creating new unique email')
 
-          if (existingAuthData?.user) {
-            userId = existingAuthData.user.id
-            console.log('[twitch/callback] Found existing auth user:', userId)
-          } else {
-            console.error('[twitch/callback] Could not find existing user:', getUserError)
+          // 別のメールアドレスで再試行（タイムスタンプを追加）
+          const retryEmail = `twitch_${twitchUser.id}_${Date.now()}@castcue.local`
+          const { data: retryData, error: retryError } = await supabaseAdmin.auth.admin.createUser({
+            email: retryEmail,
+            email_confirm: true,
+            user_metadata: {
+              provider: 'twitch',
+              twitch_id: twitchUser.id,
+              twitch_login: twitchUser.login,
+              display_name: twitchUser.display_name,
+              profile_image_url: twitchUser.profile_image_url
+            },
+            app_metadata: {
+              provider: 'twitch',
+              providers: ['twitch']
+            }
+          })
+
+          if (retryError || !retryData.user) {
+            console.error('[twitch/callback] Retry failed:', retryError)
             return NextResponse.redirect(`${siteUrl}/login?error=user_creation_failed`)
           }
+
+          userId = retryData.user.id
+          console.log('[twitch/callback] User created with retry email:', userId)
         } else {
+          console.error('[twitch/callback] User creation failed:', authError?.message)
           return NextResponse.redirect(`${siteUrl}/login?error=user_creation_failed`)
         }
       } else {
