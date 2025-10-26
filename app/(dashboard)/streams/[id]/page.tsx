@@ -36,6 +36,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter, useParams } from "next/navigation";
 import { useTheme } from "@/lib/theme-provider";
 import Image from "next/image";
+import { requireClientAuth } from "@/lib/client-auth";
 
 // チャートデータ型
 interface ChartData {
@@ -135,10 +136,10 @@ export default function StreamDetailsPage() {
       setLoading(true);
       setError(null);
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push("/login");
-        return;
+      // 認証チェック（Supabaseセッションまたはカスタムセッション）
+      const authStatus = await requireClientAuth(router);
+      if (!authStatus) {
+        return; // リダイレクト処理はrequireClientAuthが行う
       }
 
       const response = await fetch(`/api/streams/${streamId}`);

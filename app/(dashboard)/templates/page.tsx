@@ -6,6 +6,7 @@ import { Plus, Edit, Trash2, Loader2 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { requireClientAuth, checkClientAuth } from "@/lib/client-auth";
 
 interface Template {
   id: string;
@@ -50,8 +51,8 @@ export default function TemplatesPage() {
 
   async function fetchLastStreamTitle() {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      const authStatus = await checkClientAuth();
+      if (!authStatus.isAuthenticated) return;
 
       // 最新の配信を取得
       const response = await fetch("/api/streams");
@@ -97,11 +98,10 @@ export default function TemplatesPage() {
       setLoading(true);
       setError(null);
 
-      // 認証チェック
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push("/login");
-        return;
+      // 認証チェック（Supabaseセッションまたはカスタムセッション）
+      const authStatus = await requireClientAuth(router);
+      if (!authStatus) {
+        return; // リダイレクト処理はrequireClientAuthが行う
       }
 
       const response = await fetch("/api/templates");

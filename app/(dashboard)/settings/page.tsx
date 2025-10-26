@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { useRouter } from "next/navigation";
 import { User, Clock, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import Image from "next/image";
+import { requireClientAuth } from "@/lib/client-auth";
 
 interface Profile {
   twitch_user_id: string;
@@ -55,18 +56,27 @@ export default function SettingsPage() {
     try {
       setLoading(true);
 
-      // Check authentication
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      // 認証チェック（Supabaseセッションまたはカスタムセッション）
+      const authStatus = await requireClientAuth(router);
+      if (!authStatus) {
+        return; // リダイレクト処理はrequireClientAuthが行う
+      }
+
+      // Load profile
+      const userId = authStatus.session?.user?.id || authStatus.profile?.user_id || (document.cookie
+        .split('; ')
+        .find(row => row.startsWith('castcue_user_id='))
+        ?.split('=')[1]);
+
+      if (!userId) {
         router.push('/login');
         return;
       }
 
-      // Load profile
       const { data: profileData } = await supabase
         .from('profiles')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .single();
 
       setProfile(profileData);

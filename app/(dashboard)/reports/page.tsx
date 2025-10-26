@@ -7,6 +7,7 @@ import { Calendar, Search, TrendingUp, Users, MousePointerClick, Trophy, Sparkle
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { requireClientAuth } from "@/lib/client-auth";
 
 interface Report {
   id: string;
@@ -98,11 +99,10 @@ export default function ReportsPage() {
         setLoading(true);
         setError(null);
 
-        // 認証チェック
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          router.push("/login");
-          return;
+        // 認証チェック（Supabaseセッションまたはカスタムセッション）
+        const authStatus = await requireClientAuth(router);
+        if (!authStatus) {
+          return; // リダイレクト処理はrequireClientAuthが行う
         }
 
         // レポートデータを取得

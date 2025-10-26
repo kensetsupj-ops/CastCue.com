@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useTheme } from "@/lib/theme-provider";
 import type { AdminStatsResponse } from "@/types/admin";
+import { requireClientAuth } from "@/lib/client-auth";
 
 export default function AdminPage() {
   const [data, setData] = useState<AdminStatsResponse | null>(null);
@@ -51,11 +52,10 @@ export default function AdminPage() {
       setLoading(true);
       setError(null);
 
-      // 認証チェック
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push("/login");
-        return;
+      // 認証チェック（Supabaseセッションまたはカスタムセッション）
+      const authStatus = await requireClientAuth(router);
+      if (!authStatus) {
+        return; // リダイレクト処理はrequireClientAuthが行う
       }
 
       // 管理画面統計データ取得

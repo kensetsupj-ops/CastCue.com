@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Twitter, Webhook, CheckCircle2, XCircle, Loader2, AlertCircle, Bell } from "lucide-react";
+import { requireClientAuth } from "@/lib/client-auth";
 
 interface XConnection {
   id: string;
@@ -177,28 +178,33 @@ function IntegrationsContent() {
     }, 5000);
 
     try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError) {
-        console.error('ユーザー情報取得エラー:', userError);
+      // 認証チェック（Supabaseセッションまたはカスタムセッション）
+      const authStatus = await requireClientAuth(router);
+      if (!authStatus) {
         clearTimeout(failsafeTimeout);
         setLoading(false);
-        router.push('/login');
-        return;
+        return; // リダイレクト処理はrequireClientAuthが行う
       }
-      if (!user) {
+
+      const userId = authStatus.session?.user?.id || authStatus.profile?.user_id || (document.cookie
+        .split('; ')
+        .find(row => row.startsWith('castcue_user_id='))
+        ?.split('=')[1]);
+
+      if (!userId) {
         clearTimeout(failsafeTimeout);
         setLoading(false);
         router.push('/login');
         return;
       }
 
-      console.log('連携情報を読み込み中... user_id:', user.id);
+      console.log('連携情報を読み込み中... user_id:', userId);
 
       // Load X connection
       const { data: xData, error: xError } = await supabase
         .from('x_connections')
         .select('id, scope, expires_at, created_at')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .maybeSingle();
 
       if (xError) {
@@ -212,7 +218,7 @@ function IntegrationsContent() {
       const { data: discordData, error: discordError } = await supabase
         .from('discord_webhooks')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .maybeSingle();
 
       if (discordError) {

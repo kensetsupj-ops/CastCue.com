@@ -19,6 +19,7 @@ import {
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { requireClientAuth } from "@/lib/client-auth";
 import Image from "next/image";
 
 interface Stream {
@@ -60,11 +61,10 @@ export default function StreamsPage() {
         setLoading(true);
         setError(null);
 
-        // 認証チェック
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          router.push("/login");
-          return;
+        // 認証チェック（Supabaseセッションまたはカスタムセッション）
+        const authStatus = await requireClientAuth(router);
+        if (!authStatus) {
+          return; // リダイレクト処理はrequireClientAuthが行う
         }
 
         // 配信一覧を取得

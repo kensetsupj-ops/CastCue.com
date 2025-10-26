@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useTheme } from "@/lib/theme-provider";
+import { requireClientAuth } from "@/lib/client-auth";
 // import { TutorialWelcomeCard } from "@/components/tutorial/TutorialWelcomeCard";
 
 interface DashboardData {
@@ -101,11 +102,10 @@ export default function DashboardPage() {
         setLoading(true);
         setError(null);
 
-        // 認証チェック
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          router.push("/login");
-          return;
+        // 認証チェック（Supabaseセッションまたはカスタムセッション）
+        const authStatus = await requireClientAuth(router);
+        if (!authStatus) {
+          return; // リダイレクト処理はrequireClientAuthが行う
         }
 
         // ダッシュボードデータ取得
