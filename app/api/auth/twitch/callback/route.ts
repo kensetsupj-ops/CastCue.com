@@ -197,13 +197,13 @@ export async function GET(request: Request) {
     console.log('[twitch/callback] Creating session for user:', userId)
 
     // ユーザー情報を取得
-    const { data: userData } = await supabaseAdmin.auth.admin.getUserById(userId)
+    const { data: userAuthData } = await supabaseAdmin.auth.admin.getUserById(userId)
 
-    if (userData?.user) {
+    if (userAuthData?.user) {
       // マジックリンクを生成
       const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
         type: 'magiclink',
-        email: userData.user.email!,
+        email: userAuthData.user.email!,
         options: {
           redirectTo: `${siteUrl}/dashboard`
         }
