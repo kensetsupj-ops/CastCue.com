@@ -28,18 +28,11 @@ export async function GET(request: Request) {
 
     // メールエラーの場合でもセッションが作成されている可能性があるので確認
     if (errorDescription?.includes('email') || errorDescription?.includes('Email')) {
-      console.log('[auth/callback] Email error detected in URL params, checking for existing session...')
-      const supabase = await createClient()
-      const { data: sessionData } = await supabase.auth.getSession()
+      console.log('[auth/callback] Email error detected, attempting workaround...')
 
-      if (sessionData?.session) {
-        console.log('[auth/callback] Session found despite OAuth error, continuing with authentication...')
-        // プロフィール同期を実行
-        await syncTwitchProfile(sessionData.session.user.id, sessionData.session.provider_token ?? undefined)
-        return NextResponse.redirect(`${siteUrl}${next}`)
-      } else {
-        console.log('[auth/callback] No session found, user needs to retry authentication')
-      }
+      // 別のアプローチ：カスタムTwitch認証フローにフォールバック
+      console.log('[auth/callback] Redirecting to custom Twitch OAuth flow')
+      return NextResponse.redirect(`${siteUrl}/api/auth/twitch`)
     }
   }
 

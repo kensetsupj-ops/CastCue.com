@@ -39,8 +39,22 @@ function LoginContent() {
     // エラーメッセージをクリア
     setErrorMessage(null);
 
-    // カスタム認証フローを使用（メールアドレスなしでも動作）
-    window.location.href = '/api/auth/twitch';
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'twitch',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+        scopes: 'user:read:email',
+        queryParams: {
+          // メールアドレスの取得を試みるがオプショナルにする
+          prompt: 'none'
+        }
+      },
+    });
+
+    if (error) {
+      console.error('ログインエラー:', error);
+      setErrorMessage('ログインに失敗しました。もう一度お試しください。');
+    }
   };
 
   return (

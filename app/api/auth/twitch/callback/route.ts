@@ -193,32 +193,17 @@ export async function GET(request: Request) {
       console.error('[twitch/callback] Failed to upsert profile:', profileError)
     }
 
-    // セッションを作成
-    console.log('[twitch/callback] Setting up authentication for user:', userId)
+    // セッションを作成 - より直接的なアプローチ
+    console.log('[twitch/callback] Creating direct session for user:', userId)
 
     // ユーザー情報を取得
     const { data: userAuthData } = await supabaseAdmin.auth.admin.getUserById(userId)
 
     if (userAuthData?.user) {
-      // インパーソネーショントークンを生成（管理者権限で他のユーザーとしてログイン）
-      console.log('[twitch/callback] Generating impersonation token')
+      // 注: setSessionメソッドは管理者APIには存在しない
 
-      const { data: tokenData, error: tokenError } = await supabaseAdmin.auth.admin.generateLink({
-        type: 'recovery',
-        email: userAuthData.user.email!,
-        options: {
-          redirectTo: `${siteUrl}/dashboard`
-        }
-      })
-
-      if (!tokenError && tokenData) {
-        // リカバリーリンクを使用してリダイレクト
-        console.log('[twitch/callback] Redirecting with recovery link')
-        return NextResponse.redirect(tokenData.properties.action_link)
-      }
-
-      // 別の方法：マジックリンクを生成
-      console.log('[twitch/callback] Trying magic link as fallback')
+      // 代替方法：マジックリンクを使用してセッションを作成
+      console.log('[twitch/callback] Creating session via magic link')
       const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
         type: 'magiclink',
         email: userAuthData.user.email!,
@@ -227,13 +212,46 @@ export async function GET(request: Request) {
         }
       })
 
-      if (!linkError && linkData) {
-        console.log('[twitch/callback] Redirecting with magic link')
-        const magicLinkUrl = linkData.properties.action_link
-        // カスタムマジックリンクハンドラーを通す
-        const encodedEmail = encodeURIComponent(userAuthData.user.email!)
-        const customMagicUrl = `${siteUrl}/auth/magic?token=${linkData.properties.hashed_token}&type=magiclink&email=${encodedEmail}&next=/dashboard`
-        return NextResponse.redirect(customMagicUrl)
+      if (!linkError && linkData && linkData.properties.action_link) {
+        // マジックリンクをサーバーサイドで検証してセッションを作成
+        console.log('[twitch/callback] Processing magic link server-side')
+
+        // URLからトークンを抽出
+        const urlParts = linkData.properties.action_link.split('#')
+        if (urlParts.length > 1) {
+          const params = new URLSearchParams(urlParts[1])
+          const accessToken = params.get('access_token')
+          const refreshToken = params.get('refresh_token')
+
+          if (accessToken) {
+            // セッションクッキーを設定してダッシュボードにリダイレクト
+            const response = NextResponse.redirect(`${siteUrl}/dashboard`)
+
+            // Supabaseのセッションクッキーを設定
+            const cookieName = `sb-${process.env.NEXT_PUBLIC_SUPABASE_URL!.split('//')[1].split('.')[0]}-auth-token`
+
+            response.cookies.set(cookieName, JSON.stringify({
+              access_token: accessToken,
+              refresh_token: refreshToken || '',
+              expires_at: Math.floor(Date.now() / 1000) + 3600,
+              expires_in: 3600,
+              user: userAuthData.user
+            }), {
+              httpOnly: false,
+              secure: process.env.NODE_ENV === 'production',
+              sameSite: 'lax',
+              maxAge: 60 * 60 * 24 * 7,
+              path: '/'
+            })
+
+            console.log('[twitch/callback] Session cookie set, redirecting to dashboard')
+            return response
+          }
+        }
+
+        // トークンが取得できない場合は、通常のマジックリンクリダイレクトを使用
+        console.log('[twitch/callback] Using standard magic link redirect')
+        return NextResponse.redirect(linkData.properties.action_link)
       }
     }
 
