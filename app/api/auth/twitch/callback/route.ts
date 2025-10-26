@@ -193,14 +193,32 @@ export async function GET(request: Request) {
       console.error('[twitch/callback] Failed to upsert profile:', profileError)
     }
 
-    // セッショントークンを生成してクッキーに設定
-    console.log('[twitch/callback] Creating session for user:', userId)
+    // セッションを作成
+    console.log('[twitch/callback] Setting up authentication for user:', userId)
 
     // ユーザー情報を取得
     const { data: userAuthData } = await supabaseAdmin.auth.admin.getUserById(userId)
 
     if (userAuthData?.user) {
-      // マジックリンクを生成
+      // インパーソネーショントークンを生成（管理者権限で他のユーザーとしてログイン）
+      console.log('[twitch/callback] Generating impersonation token')
+
+      const { data: tokenData, error: tokenError } = await supabaseAdmin.auth.admin.generateLink({
+        type: 'recovery',
+        email: userAuthData.user.email!,
+        options: {
+          redirectTo: `${siteUrl}/dashboard`
+        }
+      })
+
+      if (!tokenError && tokenData) {
+        // リカバリーリンクを使用してリダイレクト
+        console.log('[twitch/callback] Redirecting with recovery link')
+        return NextResponse.redirect(tokenData.properties.action_link)
+      }
+
+      // 別の方法：マジックリンクを生成
+      console.log('[twitch/callback] Trying magic link as fallback')
       const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
         type: 'magiclink',
         email: userAuthData.user.email!,
@@ -210,9 +228,11 @@ export async function GET(request: Request) {
       })
 
       if (!linkError && linkData) {
-        // マジックリンクのアクションリンクにリダイレクト
         console.log('[twitch/callback] Redirecting with magic link')
-        return NextResponse.redirect(linkData.properties.action_link)
+        const magicLinkUrl = linkData.properties.action_link
+        // カスタムマジックリンクハンドラーを通す
+        const customMagicUrl = `${siteUrl}/auth/magic?token=${linkData.properties.hashed_token}&type=magiclink&next=/dashboard`
+        return NextResponse.redirect(customMagicUrl)
       }
     }
 
@@ -227,7 +247,7 @@ export async function GET(request: Request) {
       maxAge: 60 * 60 * 24 * 7 // 7日間
     })
 
-    console.log('[twitch/callback] Authentication successful, redirecting to dashboard')
+    console.log('[twitch/callback] Authentication completed, redirecting to dashboard')
     return response
 
   } catch (error) {
