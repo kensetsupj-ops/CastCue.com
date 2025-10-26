@@ -231,7 +231,8 @@ export async function GET(request: Request) {
         console.log('[twitch/callback] Redirecting with magic link')
         const magicLinkUrl = linkData.properties.action_link
         // カスタムマジックリンクハンドラーを通す
-        const customMagicUrl = `${siteUrl}/auth/magic?token=${linkData.properties.hashed_token}&type=magiclink&next=/dashboard`
+        const encodedEmail = encodeURIComponent(userAuthData.user.email!)
+        const customMagicUrl = `${siteUrl}/auth/magic?token=${linkData.properties.hashed_token}&type=magiclink&email=${encodedEmail}&next=/dashboard`
         return NextResponse.redirect(customMagicUrl)
       }
     }

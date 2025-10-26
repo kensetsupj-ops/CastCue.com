@@ -6,6 +6,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const token = searchParams.get('token')
   const type = searchParams.get('type')
+  const email = searchParams.get('email')
   const next = searchParams.get('next') ?? '/dashboard'
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.APP_ORIGIN
@@ -13,8 +14,8 @@ export async function GET(request: NextRequest) {
     return new NextResponse('Server configuration error', { status: 500 })
   }
 
-  if (!token || !type) {
-    console.error('[auth/magic] Missing token or type')
+  if (!token || !type || !email) {
+    console.error('[auth/magic] Missing token, type, or email')
     return NextResponse.redirect(`${siteUrl}/login?error=invalid_link`)
   }
 
@@ -24,7 +25,8 @@ export async function GET(request: NextRequest) {
     // マジックリンクトークンを検証
     const { data, error } = await supabase.auth.verifyOtp({
       type: type as 'magiclink' | 'email',
-      token: token
+      token: token,
+      email: email
     })
 
     if (error) {
