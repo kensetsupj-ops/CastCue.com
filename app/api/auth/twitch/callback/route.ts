@@ -97,6 +97,17 @@ export async function GET(request: Request) {
       // 既存ユーザー
       userId = existingProfile.user_id
       console.log('[twitch/callback] Existing user found:', userId)
+
+      // 既存ユーザーのメタデータを更新（最新のTwitch情報で）
+      await supabaseAdmin.auth.admin.updateUserById(userId, {
+        user_metadata: {
+          provider: 'twitch',
+          twitch_id: twitchUser.id,
+          twitch_login: twitchUser.login,
+          display_name: twitchUser.display_name,
+          profile_image_url: twitchUser.profile_image_url
+        }
+      })
     } else {
       // 新規ユーザーを作成
       // メールアドレスがない場合は仮のメールアドレスを使用
@@ -104,15 +115,20 @@ export async function GET(request: Request) {
 
       console.log('[twitch/callback] Creating new user with email:', email)
 
+      // ランダムなパスワードを生成
+      const password = `twitch_${twitchUser.id}_${Math.random().toString(36).substring(7)}`
+
       const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
         email,
+        password, // パスワードを設定
         email_confirm: true, // メール確認をスキップ
         user_metadata: {
           provider: 'twitch',
           twitch_id: twitchUser.id,
           twitch_login: twitchUser.login,
           display_name: twitchUser.display_name,
-          profile_image_url: twitchUser.profile_image_url
+          profile_image_url: twitchUser.profile_image_url,
+          temp_password: password // 一時的にパスワードを保存（後で使用）
         },
         app_metadata: {
           provider: 'twitch',
@@ -177,10 +193,33 @@ export async function GET(request: Request) {
       console.error('[twitch/callback] Failed to upsert profile:', profileError)
     }
 
-    // ダッシュボードにリダイレクト
+    // セッショントークンを生成してクッキーに設定
+    console.log('[twitch/callback] Creating session for user:', userId)
+
+    // ユーザー情報を取得
+    const { data: userData } = await supabaseAdmin.auth.admin.getUserById(userId)
+
+    if (userData?.user) {
+      // マジックリンクを生成
+      const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+        type: 'magiclink',
+        email: userData.user.email!,
+        options: {
+          redirectTo: `${siteUrl}/dashboard`
+        }
+      })
+
+      if (!linkError && linkData) {
+        // マジックリンクのアクションリンクにリダイレクト
+        console.log('[twitch/callback] Redirecting with magic link')
+        return NextResponse.redirect(linkData.properties.action_link)
+      }
+    }
+
+    // フォールバック：直接ダッシュボードにリダイレクト
     const response = NextResponse.redirect(`${siteUrl}/dashboard`)
 
-    // ユーザーIDをクッキーに保存（セッション管理用）
+    // ユーザーIDをクッキーに保存（バックアップ）
     response.cookies.set('twitch_user_id', userId, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
