@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { createServerClient } from "@supabase/ssr";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/db";
 import { ApiErrors } from "@/lib/api-errors";
+import { getAuthUser } from "@/lib/api-auth";
 
 // Force dynamic rendering (uses cookies)
 export const dynamic = 'force-dynamic';
@@ -31,47 +30,14 @@ const TemplateSchema = z.object({
  */
 export async function GET(req: NextRequest) {
   try {
-    // Supabase認証
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          },
-        },
-      }
-    );
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError) {
-      console.error("[templates] Auth error:", authError);
-
-      // Supabase connection error - return empty templates with warning
-      if (authError.message?.includes("Invalid API key") || authError.message?.includes("timed out")) {
-        console.warn("[templates] Supabase auth connection issue, returning empty templates");
-        return NextResponse.json({ templates: [] });
-      }
-
-      return ApiErrors.notAuthenticated();
-    }
+    // カスタム認証ヘルパーを使用（Supabaseセッション＋カスタムセッション対応）
+    const { user } = await getAuthUser(req);
 
     if (!user) {
       return ApiErrors.notAuthenticated();
     }
 
-    // テンプレート取得
+    // テンプレート一覧を取得
     const { data: templates, error } = await supabaseAdmin
       .from("templates")
       .select("*")
@@ -79,145 +45,53 @@ export async function GET(req: NextRequest) {
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.error("[templates] Error fetching templates:", error);
-
-      // Supabase connection error - return empty templates
-      if (error.message?.includes("Invalid API key") || error.message?.includes("timed out")) {
-        console.warn("[templates] Supabase connection issue, returning empty templates");
-        return NextResponse.json({ templates: [] });
-      }
-
+      console.error("[templates] Database error:", error);
       return ApiErrors.serverError(error, false);
     }
 
-    // 各テンプレートの使用回数と統計を計算
-    // PERFORMANCE: N+1クエリを回避 - 全deliveriesを1回のクエリで取得
-    let usageCounts: Record<string, number> = {};
+    // カテゴリと使用回数は後で実装
+    const formattedTemplates = templates?.map((template) => ({
+      id: template.id,
+      name: template.name || "無題のテンプレート",
+      category: "一般",
+      usageCount: 0,
+      avgCalledViewers: 0,
+      body: template.body || "",
+    })) || [];
 
-    if (templates && templates.length > 0) {
-      const templateIds = templates.map(t => t.id);
-
-      const { data: allDeliveries } = await supabaseAdmin
-        .from("deliveries")
-        .select("template_id")
-        .eq("user_id", user.id)
-        .eq("status", "sent")
-        .in("template_id", templateIds);
-
-      // template_id別にカウント
-      if (allDeliveries) {
-        usageCounts = allDeliveries.reduce((acc, delivery) => {
-          const templateId = delivery.template_id;
-          if (templateId) {
-            acc[templateId] = (acc[templateId] || 0) + 1;
-          }
-          return acc;
-        }, {} as Record<string, number>);
-      }
-    }
-
-    // テンプレートに統計情報を付加（非同期処理不要）
-    const templatesWithStats = (templates || []).map((template) => {
-      const usageCount = usageCounts[template.id] || 0;
-
-      // 勝率（簡易実装：使用回数に基づく）
-      // 詳細な勝率計算にはサンプリングデータが必要なため、
-      // 今後の改善として使用回数をベースとした簡易値を表示
-      const winRate = usageCount > 0 ? Math.min(Math.round((usageCount / 10) * 100), 100) : 0;
-
-      return {
-        id: template.id,
-        name: template.name,
-        usageCount,
-        winRate,
-        body: template.body,
-      };
-    });
-
-    return NextResponse.json({ templates: templatesWithStats });
+    return NextResponse.json({ templates: formattedTemplates });
   } catch (error: any) {
-    console.error("[templates] Error:", error);
+    console.error("[templates] Unexpected error:", error);
     return ApiErrors.serverError(error, false);
   }
 }
 
 /**
  * POST /api/templates
- * 新規テンプレート作成
+ * 新しいテンプレートを作成
  */
 export async function POST(req: NextRequest) {
   try {
-    // Supabase認証
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          },
-        },
-      }
-    );
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError) {
-      console.error("[templates] Auth error:", authError);
-      return ApiErrors.unauthorized();
-    }
+    // カスタム認証ヘルパーを使用（Supabaseセッション＋カスタムセッション対応）
+    const { user } = await getAuthUser(req);
 
     if (!user) {
-      console.error("[templates] No user found in session");
       return ApiErrors.notAuthenticated();
     }
 
-    // リクエストボディ取得
-    let requestBody;
-    try {
-      requestBody = await req.json();
-      console.log("[templates] Request body:", {
-        name: requestBody.name,
-        bodyLength: requestBody.body?.length,
-        variant: requestBody.variant
-      });
-    } catch (jsonError: any) {
-      console.error("[templates] JSON parse error:", jsonError);
-      return ApiErrors.badRequest("リクエストボディのJSON形式が不正です");
-    }
+    const body = await req.json();
 
     // バリデーション
-    let validatedData;
-    try {
-      validatedData = TemplateSchema.parse(requestBody);
-      console.log("[templates] Validation successful");
-    } catch (validationError) {
-      if (validationError instanceof z.ZodError) {
-        console.error("[templates] Validation error:", validationError.issues);
-        return NextResponse.json(
-          {
-            error: "Validation error",
-            details: validationError.issues
-          },
-          { status: 400 }
-        );
-      }
-      throw validationError;
+    const result = TemplateSchema.safeParse(body);
+    if (!result.success) {
+      return ApiErrors.validationError(
+        result.error.issues.map((e) => e.message).join(", ")
+      );
     }
 
-    const { name, body: templateBody } = validatedData;
+    const { name, body: templateBody } = result.data;
 
-    // テンプレート作成
-    console.log("[templates] Creating template for user:", user.id);
+    // テンプレートを作成
     const { data: template, error } = await supabaseAdmin
       .from("templates")
       .insert({
@@ -229,43 +103,120 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (error) {
-      console.error("[templates] Database error creating template:", {
-        code: error.code,
-        message: error.message,
-        details: error.details,
-        hint: error.hint
-      });
-      return NextResponse.json({
-        error: error.message || "Failed to create template"
-      }, { status: 500 });
+      console.error("[templates] Database error:", error);
+
+      // Unique constraint violation
+      if (error.code === "23505") {
+        return ApiErrors.conflict("同じ名前のテンプレートが既に存在します");
+      }
+
+      return ApiErrors.serverError(error, false);
     }
 
-    if (!template) {
-      console.error("[templates] No template returned from database");
-      return NextResponse.json({
-        error: "Template created but not returned"
-      }, { status: 500 });
-    }
-
-    console.log("[templates] Template created successfully:", template.id);
-    return NextResponse.json({
-      success: true,
-      template: {
-        id: template.id,
-        name: template.name,
-        usageCount: 0,
-        winRate: 0,
-        body: template.body,
-      },
-    });
+    return NextResponse.json({ template }, { status: 201 });
   } catch (error: any) {
-    console.error("[templates] Unexpected error:", {
-      message: error?.message,
-      stack: error?.stack,
-      name: error?.name,
-      error: error
-    });
+    console.error("[templates] Unexpected error:", error);
+    return ApiErrors.serverError(error, false);
+  }
+}
 
+/**
+ * PUT /api/templates
+ * テンプレートを更新
+ */
+export async function PUT(req: NextRequest) {
+  try {
+    // カスタム認証ヘルパーを使用（Supabaseセッション＋カスタムセッション対応）
+    const { user } = await getAuthUser(req);
+
+    if (!user) {
+      return ApiErrors.notAuthenticated();
+    }
+
+    const body = await req.json();
+    const { id, name, body: templateBody } = body;
+
+    if (!id) {
+      return ApiErrors.badRequest("テンプレートIDが必要です");
+    }
+
+    // バリデーション
+    const result = TemplateSchema.safeParse({ name, body: templateBody });
+    if (!result.success) {
+      return ApiErrors.validationError(
+        result.error.issues.map((e) => e.message).join(", ")
+      );
+    }
+
+    // テンプレートの所有者確認と更新
+    const { data: template, error } = await supabaseAdmin
+      .from("templates")
+      .update({
+        name: result.data.name,
+        body: result.data.body,
+      })
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("[templates] Database error:", error);
+
+      if (error.code === "PGRST116") {
+        return ApiErrors.notFound("テンプレートが見つかりません");
+      }
+
+      return ApiErrors.serverError(error, false);
+    }
+
+    return NextResponse.json({ template });
+  } catch (error: any) {
+    console.error("[templates] Unexpected error:", error);
+    return ApiErrors.serverError(error, false);
+  }
+}
+
+/**
+ * DELETE /api/templates
+ * テンプレートを削除
+ */
+export async function DELETE(req: NextRequest) {
+  try {
+    // カスタム認証ヘルパーを使用（Supabaseセッション＋カスタムセッション対応）
+    const { user } = await getAuthUser(req);
+
+    if (!user) {
+      return ApiErrors.notAuthenticated();
+    }
+
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return ApiErrors.badRequest("テンプレートIDが必要です");
+    }
+
+    // テンプレートの所有者確認と削除
+    const { error } = await supabaseAdmin
+      .from("templates")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", user.id);
+
+    if (error) {
+      console.error("[templates] Database error:", error);
+
+      if (error.code === "PGRST116") {
+        return ApiErrors.notFound("テンプレートが見つかりません");
+      }
+
+      return ApiErrors.serverError(error, false);
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error("[templates] Unexpected error:", error);
     return ApiErrors.serverError(error, false);
   }
 }

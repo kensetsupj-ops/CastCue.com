@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/db";
-import { cookies } from "next/headers";
-import { createServerClient } from "@supabase/ssr";
+import { getAuthUser } from "@/lib/api-auth";
 
 // Force dynamic rendering (uses cookies)
 export const dynamic = 'force-dynamic';
@@ -17,31 +16,10 @@ const SetDefaultTemplateSchema = z.object({
  */
 export async function POST(req: NextRequest) {
   try {
-    // Authenticate user
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          },
-        },
-      }
-    );
+    // カスタム認証ヘルパーを使用（Supabaseセッション＋カスタムセッション対応）
+    const { user } = await getAuthUser(req);
 
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
+    if (!user) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
@@ -49,84 +27,71 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { template_id } = SetDefaultTemplateSchema.parse(body);
 
-    // Verify template exists and belongs to user
+    // Verify template ownership
     const { data: template, error: templateError } = await supabaseAdmin
       .from("templates")
-      .select("id, user_id")
+      .select("id")
       .eq("id", template_id)
       .eq("user_id", user.id)
       .single();
 
     if (templateError || !template) {
       return NextResponse.json(
-        { error: "Template not found" },
+        { error: "Template not found or not owned by user" },
         { status: 404 }
       );
     }
 
-    // Upsert user settings with default template
-    const { error: upsertError } = await supabaseAdmin
+    // Update user settings
+    const { error: updateError } = await supabaseAdmin
       .from("user_settings")
       .upsert(
         {
           user_id: user.id,
           default_template_id: template_id,
+          updated_at: new Date().toISOString(),
         },
         {
           onConflict: "user_id",
         }
       );
 
-    if (upsertError) {
-      console.error("[default-template] Upsert error:", upsertError);
+    if (updateError) {
+      console.error("Failed to update default template:", updateError);
       return NextResponse.json(
-        { error: "Failed to set default template" },
+        { error: "Failed to update settings" },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({
-      success: true,
-      message: "Default template set successfully",
-      template_id,
-    });
+    return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error("[default-template] Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("Error in POST /api/settings/default-template:", error);
+
+    if (error.issues) {
+      return NextResponse.json(
+        { error: "Invalid template_id format" },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
   }
 }
 
 /**
- * Get current default template
+ * Get default template for user
  * GET /api/settings/default-template
  */
 export async function GET(req: NextRequest) {
   try {
-    // Authenticate user
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          },
-        },
-      }
-    );
+    // カスタム認証ヘルパーを使用（Supabaseセッション＋カスタムセッション対応）
+    const { user } = await getAuthUser(req);
 
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
+    if (!user) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
@@ -138,17 +103,26 @@ export async function GET(req: NextRequest) {
       .single();
 
     if (settingsError) {
-      // If no settings exist yet, return null
-      return NextResponse.json({
-        default_template_id: null,
-      });
+      if (settingsError.code === "PGRST116") {
+        // No settings found, return null
+        return NextResponse.json({ default_template_id: null });
+      }
+
+      console.error("Failed to get default template:", settingsError);
+      return NextResponse.json(
+        { error: "Failed to get settings" },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({
-      default_template_id: settings.default_template_id,
+      default_template_id: settings?.default_template_id || null,
     });
   } catch (error: any) {
-    console.error("[default-template] GET error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("Error in GET /api/settings/default-template:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
   }
 }
