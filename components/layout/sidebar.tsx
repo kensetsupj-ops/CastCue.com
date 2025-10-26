@@ -48,25 +48,50 @@ export function Sidebar() {
   useEffect(() => {
     async function loadProfile() {
       try {
+        // まずSupabaseセッションを確認
         const { data: { user } } = await supabase.auth.getUser();
 
-        if (!user) {
-          router.push('/login');
-          return;
-        }
+        if (user) {
+          // Supabaseセッションがある場合
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('display_name, login, profile_image_url, email')
+            .eq('user_id', user.id)
+            .single();
 
-        // プロフィール情報を取得
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('display_name, login, profile_image_url, email')
-          .eq('user_id', user.id)
-          .single();
+          if (profileData) {
+            setProfile(profileData);
+          }
+        } else {
+          // Supabaseセッションがない場合、カスタムセッションを確認
+          const profileCookie = document.cookie
+            .split('; ')
+            .find(row => row.startsWith('castcue_profile='));
 
-        if (profileData) {
-          setProfile(profileData);
+          if (profileCookie) {
+            const profileData = JSON.parse(decodeURIComponent(profileCookie.split('=')[1]));
+            setProfile({
+              display_name: profileData.display_name,
+              login: profileData.twitch_login,
+              profile_image_url: '', // プロフィール画像はないかも
+              email: ''
+            });
+          } else {
+            // どちらのセッションもない場合のみログインページへ
+            router.push('/login');
+            return;
+          }
         }
       } catch (error) {
         console.error('プロフィール取得エラー:', error);
+        // エラーが発生してもカスタムセッションを確認
+        const profileCookie = document.cookie
+          .split('; ')
+          .find(row => row.startsWith('castcue_profile='));
+
+        if (!profileCookie) {
+          router.push('/login');
+        }
       } finally {
         setLoading(false);
       }
