@@ -193,80 +193,39 @@ export async function GET(request: Request) {
       console.error('[twitch/callback] Failed to upsert profile:', profileError)
     }
 
-    // セッションを作成 - より直接的なアプローチ
-    console.log('[twitch/callback] Creating direct session for user:', userId)
+    // セッションを作成
+    console.log('[twitch/callback] Setting up session for user:', userId)
 
-    // ユーザー情報を取得
-    const { data: userAuthData } = await supabaseAdmin.auth.admin.getUserById(userId)
-
-    if (userAuthData?.user) {
-      // 注: setSessionメソッドは管理者APIには存在しない
-
-      // 代替方法：マジックリンクを使用してセッションを作成
-      console.log('[twitch/callback] Creating session via magic link')
-      const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-        type: 'magiclink',
-        email: userAuthData.user.email!,
-        options: {
-          redirectTo: `${siteUrl}/dashboard`
-        }
-      })
-
-      if (!linkError && linkData && linkData.properties.action_link) {
-        // マジックリンクをサーバーサイドで検証してセッションを作成
-        console.log('[twitch/callback] Processing magic link server-side')
-
-        // URLからトークンを抽出
-        const urlParts = linkData.properties.action_link.split('#')
-        if (urlParts.length > 1) {
-          const params = new URLSearchParams(urlParts[1])
-          const accessToken = params.get('access_token')
-          const refreshToken = params.get('refresh_token')
-
-          if (accessToken) {
-            // セッションクッキーを設定してダッシュボードにリダイレクト
-            const response = NextResponse.redirect(`${siteUrl}/dashboard`)
-
-            // Supabaseのセッションクッキーを設定
-            const cookieName = `sb-${process.env.NEXT_PUBLIC_SUPABASE_URL!.split('//')[1].split('.')[0]}-auth-token`
-
-            response.cookies.set(cookieName, JSON.stringify({
-              access_token: accessToken,
-              refresh_token: refreshToken || '',
-              expires_at: Math.floor(Date.now() / 1000) + 3600,
-              expires_in: 3600,
-              user: userAuthData.user
-            }), {
-              httpOnly: false,
-              secure: process.env.NODE_ENV === 'production',
-              sameSite: 'lax',
-              maxAge: 60 * 60 * 24 * 7,
-              path: '/'
-            })
-
-            console.log('[twitch/callback] Session cookie set, redirecting to dashboard')
-            return response
-          }
-        }
-
-        // トークンが取得できない場合は、通常のマジックリンクリダイレクトを使用
-        console.log('[twitch/callback] Using standard magic link redirect')
-        return NextResponse.redirect(linkData.properties.action_link)
-      }
-    }
-
-    // フォールバック：直接ダッシュボードにリダイレクト
+    // ユーザー情報を取得してセッションクッキーを設定
     const response = NextResponse.redirect(`${siteUrl}/dashboard`)
 
-    // ユーザーIDをクッキーに保存（バックアップ）
-    response.cookies.set('twitch_user_id', userId, {
+    // カスタムセッションクッキーを設定（一時的な措置）
+    response.cookies.set('castcue_user_id', userId, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7 // 7日間
+      maxAge: 60 * 60 * 24 * 7, // 7日間
+      path: '/'
     })
 
-    console.log('[twitch/callback] Authentication completed, redirecting to dashboard')
+    // プロフィール情報も保存
+    const profileData = {
+      user_id: userId,
+      twitch_id: twitchUser.id,
+      twitch_login: twitchUser.login,
+      display_name: twitchUser.display_name,
+      authenticated: true
+    }
+
+    response.cookies.set('castcue_profile', JSON.stringify(profileData), {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7,
+      path: '/'
+    })
+
+    console.log('[twitch/callback] Custom session set, redirecting to dashboard')
     return response
 
   } catch (error) {
