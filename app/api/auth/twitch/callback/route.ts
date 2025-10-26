@@ -200,8 +200,9 @@ export async function GET(request: Request) {
     const response = NextResponse.redirect(`${siteUrl}/dashboard`)
 
     // カスタムセッションクッキーを設定（一時的な措置）
+    // httpOnly: false にして、クライアントサイドのJavaScriptから読み取れるようにする
     response.cookies.set('castcue_user_id', userId, {
-      httpOnly: true,
+      httpOnly: false,  // クライアントサイドから読み取り可能に
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 7, // 7日間
